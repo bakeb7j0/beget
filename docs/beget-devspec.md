@@ -671,13 +671,13 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 
 ## 8. Phased Implementation Plan
 
-### Phase 1 — Core Bootstrap
+### Phase 1 — Core Bootstrap (#1)
 
 **Phase DoD**: install.sh runs `chezmoi init && apply` on a fresh Ubuntu 24.04 or Rocky 9 VM; `--skip-secrets` bootstrap lands a usable shell with correct dotfiles and git identity. No secrets yet.
 
-#### Wave 1.1 — Foundations (parallel)
+#### Wave 1.1 — Foundations (parallel) (#32)
 
-##### Story: Repo Scaffolding
+##### Story: Repo Scaffolding (#4)
 
 **Summary**: Initial beget repo structure with README placeholder, CHANGELOG initialized, Makefile skeleton, LICENSE, `.gitignore`.
 
@@ -696,7 +696,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] `.gitignore` prevents accidental secret commits
 - [ ] LICENSE file present
 
-##### Story: OS Detection Library
+##### Story: OS Detection Library (#5)
 
 **Summary**: `lib/platform.sh` — sourced bash functions: `source_os_release`, `pkg_install`, `pkg_repo_add`, `is_gnome`, `die_if_unsupported_os`.
 
@@ -718,9 +718,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Passes shellcheck
 - [ ] bats-core suite covers supported + unsupported
 
-#### Wave 1.2 — Entry Point + Makefile (depends on Wave 1.1)
+#### Wave 1.2 — Entry Point + Makefile (depends on Wave 1.1) (#33)
 
-##### Story: install.sh Bootstrap
+##### Story: install.sh Bootstrap (#6)
 
 **Summary**: ~100-line entry point with flag parsing, pre-flight, prereq install, chezmoi init + apply.
 
@@ -745,7 +745,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Re-runnable without side effects (E2E-05, R-07)
 - [ ] Passes shellcheck
 
-##### Story: Makefile Core Targets
+##### Story: Makefile Core Targets (#7)
 
 **Summary**: `Makefile` with `lint`, `apply-dry`, `apply`, `verify` targets. `test` added in Phase 3.
 
@@ -765,9 +765,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] `make apply-dry` produces output without mutation
 - [ ] `make verify` reports drift
 
-#### Wave 1.3 — Baseline Dotfiles + Identity (depends on Wave 1.2, parallel)
+#### Wave 1.3 — Baseline Dotfiles + Identity (depends on Wave 1.2, parallel) (#34)
 
-##### Story: Minimal Dotfiles
+##### Story: Minimal Dotfiles (#8)
 
 **Summary**: Baseline dotfiles materialized by chezmoi — working shell after bootstrap.
 
@@ -790,7 +790,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Ghostty opens with IBM CGA theme
 - [ ] No secret-dependent env vars referenced
 
-##### Story: Git Identity with includeIf
+##### Story: Git Identity with includeIf (#9)
 
 **Summary**: `dot_gitconfig.tmpl` + `dot_gitconfig-analogic` providing per-repo identity.
 
@@ -817,13 +817,13 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 
 ---
 
-### Phase 2 — Secrets and Operational Docs
+### Phase 2 — Secrets and Operational Docs (#2)
 
 **Phase DoD**: rbw integration live. SSH keys and AWS credentials materialize from VW via chezmoi templates. `newsecret` works end-to-end. Migration script has moved all shell-env-var secrets into VW with verified sha256 roundtrip. Runbook documents every Section 4 flow.
 
-#### Wave 2.1 — Shell Helpers (gate)
+#### Wave 2.1 — Shell Helpers (gate) (#35)
 
-##### Story: Shell Secret Helpers + Tool Wrappers
+##### Story: Shell Secret Helpers + Tool Wrappers (#10)
 
 **Summary**: `secret`, `secret_get`, and `gh`/`glab`/`bao` wrappers.
 
@@ -847,9 +847,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Passes shellcheck
 - [ ] bats-core covers: missing item, rbw locked, rbw unreachable
 
-#### Wave 2.2 — File Templates + newsecret (depends on 2.1, parallel)
+#### Wave 2.2 — File Templates + newsecret (depends on 2.1, parallel) (#36)
 
-##### Story: SSH Key Chezmoi Templates
+##### Story: SSH Key Chezmoi Templates (#11)
 
 **Summary**: Templates under `private_dot_ssh/` for each SSH identity.
 
@@ -870,7 +870,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Rotation: update VW + `chezmoi apply` → file updates (R-19)
 - [ ] `ssh-keygen -l` validates each file
 
-##### Story: AWS Credentials Chezmoi Template
+##### Story: AWS Credentials Chezmoi Template (#12)
 
 **Summary**: `private_dot_aws/credentials.tmpl` for long-lived-cred profiles.
 
@@ -889,7 +889,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] SSO still works
 - [ ] Rotation verified
 
-##### Story: `newsecret` Helper
+##### Story: `newsecret` Helper (#13)
 
 **Summary**: User-facing tool for adding secrets to VW.
 
@@ -912,9 +912,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Derived env-var name reported
 - [ ] Passes shellcheck + bats-core
 
-#### Wave 2.3 — Migration + direnv (depends on 2.2)
+#### Wave 2.3 — Migration + direnv (depends on 2.2) (#37)
 
-##### Story: Secrets Migration Script
+##### Story: Secrets Migration Script (#14)
 
 **Summary**: One-shot tool to migrate `~/.secrets/` to VW with sha256 verification.
 
@@ -936,7 +936,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Passes shellcheck
 - [ ] Clear summary output
 
-##### Story: direnv Setup + Analogic Context
+##### Story: direnv Setup + Analogic Context (#15)
 
 **Summary**: `direnv` config + sample `.envrc`.
 
@@ -955,9 +955,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Example `.envrc` demonstrates context-scoped secret pattern
 - [ ] After `direnv allow`, enter → load; leave → unload
 
-#### Wave 2.4 — Documentation (depends on 2.3)
+#### Wave 2.4 — Documentation (depends on 2.3) (#38)
 
-##### Story: Operations Runbook
+##### Story: Operations Runbook (#16)
 
 **Summary**: `docs/runbook.md` documenting every normative flow.
 
@@ -974,7 +974,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Troubleshooting covers: rbw locked, VW unreachable, chezmoi conflicts, direnv not authorized
 - [ ] Cross-linked to Dev Spec sections
 
-##### Story: Deployment Verification Checklist
+##### Story: Deployment Verification Checklist (#17)
 
 **Summary**: `docs/deployment-verification.md` — post-install sanity checks.
 
@@ -1000,13 +1000,13 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 
 ---
 
-### Phase 3 — Full Migration + CI
+### Phase 3 — Full Migration + CI (#3)
 
 **Phase DoD**: Every Asset Catalog asset installed on a fresh machine. System-level config applied. Upstream projects cloned and installed. CI green. All 27 test cases runnable and passing. VRTM traces every R-XX. Manual verification procedures documented.
 
-#### Wave 3.1 — System-Level Infrastructure (parallel, depends on Phase 2)
+#### Wave 3.1 — System-Level Infrastructure (parallel, depends on Phase 2) (#39)
 
-##### Story: APT Package Lists
+##### Story: APT Package Lists (#18)
 
 **Summary**: Canonical newline-delimited package lists, role-scoped.
 
@@ -1027,7 +1027,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Role scoping: minimal installs only minimal; workstation installs common + workstation
 - [ ] Idempotent
 
-##### Story: APT Repo Management
+##### Story: APT Repo Management (#19)
 
 **Summary**: `run_onchange_before_10-apt-repos.sh` adds 10+ user repos.
 
@@ -1047,7 +1047,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Idempotent
 - [ ] Fails clean on 404 (no partial state)
 
-##### Story: sysctl Configuration
+##### Story: sysctl Configuration (#20)
 
 **Summary**: `run_onchange_before_30-sysctl.sh` + `share/sysctl.d/` files.
 
@@ -1065,9 +1065,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Idempotent
 - [ ] Comments explain what/why
 
-#### Wave 3.2 — Services, Tooling, GNOME, Upstream (parallel, depends on 3.1)
+#### Wave 3.2 — Services, Tooling, GNOME, Upstream (parallel, depends on 3.1) (#40)
 
-##### Story: systemd Units (User + System)
+##### Story: systemd Units (User + System) (#21)
 
 **Summary**: 2 user units + 3 system units (workstation-scoped).
 
@@ -1088,7 +1088,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Idempotent
 - [ ] `restart-xdg-portal` prominently flagged as workaround
 
-##### Story: Non-apt Tooling Installation
+##### Story: Non-apt Tooling Installation (#22)
 
 **Summary**: Per-pattern install scripts (download, shell-installer, pipx, tarball).
 
@@ -1111,7 +1111,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Fails clean on 404/checksum mismatch
 - [ ] `--version` returns expected post-install
 
-##### Story: GNOME Keybindings
+##### Story: GNOME Keybindings (#23)
 
 **Summary**: `run_onchange_before_workstation_70-gnome-keybinds.sh` sets 3 cheet-popup bindings.
 
@@ -1129,7 +1129,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Idempotent (no duplicates)
 - [ ] Handles pre-existing-binding case (no overwrites)
 
-##### Story: Upstream Project Integrations
+##### Story: Upstream Project Integrations (#24)
 
 **Summary**: `.chezmoiexternal.toml` + post-clone installer.
 
@@ -1146,9 +1146,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] 168h refresh period
 - [ ] Follow-ups opened for missing installers
 
-#### Wave 3.3 — Test Infrastructure and CI (parallel, depends on 3.2)
+#### Wave 3.3 — Test Infrastructure and CI (parallel, depends on 3.2) (#41)
 
-##### Story: GitHub Actions CI Pipeline
+##### Story: GitHub Actions CI Pipeline (#25)
 
 **Summary**: `.github/workflows/ci.yml` invoking `make` targets.
 
@@ -1166,7 +1166,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] JUnit XML artifacts (DM-05)
 - [ ] Each job under 10 minutes
 
-##### Story: Unit Test Suite (bats-core)
+##### Story: Unit Test Suite (bats-core) (#26)
 
 **Summary**: `tests/unit/*.bats` for all bash helpers.
 
@@ -1184,7 +1184,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Helpers don't mutate machine state
 - [ ] JUnit XML generated
 
-##### Story: Integration Test Suite
+##### Story: Integration Test Suite (#27)
 
 **Summary**: `tests/integration/` — static analysis + template rendering.
 
@@ -1202,7 +1202,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Pass/fail with offending file/line on failure
 - [ ] Integrated into CI as distinct job
 
-##### Story: E2E Test Suite (Containerized)
+##### Story: E2E Test Suite (Containerized) (#28)
 
 **Summary**: `tests/e2e/` — docker-based smoke tests.
 
@@ -1220,7 +1220,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Total wall-time < 10 minutes
 - [ ] JUnit XML generated
 
-##### Story: Makefile test Target + Result Aggregation
+##### Story: Makefile test Target + Result Aggregation (#29)
 
 **Summary**: Makefile wiring for test tiers.
 
@@ -1240,9 +1240,9 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Results in `tests/results/`
 - [ ] `make help` documents each target
 
-#### Wave 3.4 — Traceability and Verification Docs (parallel, depends on 3.3)
+#### Wave 3.4 — Traceability and Verification Docs (parallel, depends on 3.3) (#42)
 
-##### Story: VRTM
+##### Story: VRTM (#30)
 
 **Summary**: `docs/beget-vrtm.md` mapping R-XX → verifications.
 
@@ -1259,7 +1259,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 - [ ] Zero "untraced"
 - [ ] Committed and linked from README
 
-##### Story: Manual Verification Procedures Document
+##### Story: Manual Verification Procedures Document (#31)
 
 **Summary**: `docs/manual-verification.md` for all MV-XX.
 
