@@ -1,0 +1,42 @@
+# Editor / OS cruft
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Backup / scratch files
+*.bak
+*.backup-*
+*.tmp
+*.orig
+
+# Secret-pattern defenses (design-enforced: secrets should never be in repo)
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.credentials
+secrets/
+.secrets/
+
+# Build / language artifacts
+__pycache__/
+*.pyc
+node_modules/
+target/
+dist/
+build/
+
+# Test outputs
+tests/results/
+*.junit.xml
+
+# Chezmoi internal state
+.chezmoistate/
+
+# Go
+*.test
+*.out
