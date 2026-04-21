@@ -34,7 +34,15 @@ curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash
 
 `install.sh` is produced by Phase 1. It does not exist yet.
 
-## Platform support
+## Prerequisites
+
+_Stub — detailed prerequisites will be documented as stories land._
+
+- A supported Linux distribution (see [Supported Platforms](#supported-platforms))
+- `git`, `curl`, and `bash` available on the target host
+- Network access to GitHub for fetching this repo and its dependencies
+
+## Supported Platforms
 
 - Ubuntu 24.04 LTS+
 - RHEL 9+ and family (Fedora current, Rocky Linux 9+, AlmaLinux 9+)
