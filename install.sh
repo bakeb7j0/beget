@@ -11,6 +11,12 @@
 #   --allow-root     Permit running as root (refused by default).
 #   --help           Print usage and exit.
 #
+# Environment overrides (test seams):
+#   BEGET_RAW_BASE   When set, locate_lib_platform() fetches lib/platform.sh
+#                    from "${BEGET_RAW_BASE}/lib/platform.sh" instead of the
+#                    default "${BEGET_REPO_URL}/raw/HEAD/lib/platform.sh".
+#                    Used by E2E-09 to serve install.sh + lib/ over loopback.
+#
 # Implements R-01..R-07 and R-43 from docs/beget-devspec.md.
 
 set -euo pipefail
@@ -18,6 +24,10 @@ set -euo pipefail
 # ---- Constants ---------------------------------------------------------------
 
 readonly BEGET_REPO_URL="https://github.com/bakeb7j0/beget"
+# BEGET_RAW_BASE: optional override for the raw-fetch base URL. When unset,
+# locate_lib_platform() falls back to "${BEGET_REPO_URL}/raw/HEAD". The E2E
+# one-liner test (E2E-09) uses this to point at a loopback HTTP server.
+readonly BEGET_RAW_BASE="${BEGET_RAW_BASE:-}"
 readonly REQUIRED_TOOLS=(curl git bash)
 # Distro-managed prereqs — routed through apt/dnf via pkg_install.
 # pinentry-gnome3 is appended conditionally when running under GNOME.
@@ -77,11 +87,17 @@ locate_lib_platform() {
     fi
 
     # Fallback: curl-piped path. Download lib/platform.sh to a temp file.
-    local tmp
+    # BEGET_RAW_BASE overrides the default raw base (see script header).
+    local tmp raw_base
+    if [[ -n "$BEGET_RAW_BASE" ]]; then
+        raw_base="$BEGET_RAW_BASE"
+    else
+        raw_base="${BEGET_REPO_URL}/raw/HEAD"
+    fi
     tmp="$(mktemp)"
-    if ! curl -fsSL "${BEGET_REPO_URL}/raw/HEAD/lib/platform.sh" -o "$tmp"; then
+    if ! curl -fsSL "${raw_base}/lib/platform.sh" -o "$tmp"; then
         rm -f "$tmp"
-        die "cannot locate lib/platform.sh (tried $lib_path and remote fetch)"
+        die "cannot locate lib/platform.sh (tried $lib_path and ${raw_base}/lib/platform.sh)"
     fi
     printf '%s' "$tmp"
 }

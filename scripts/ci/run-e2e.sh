@@ -34,21 +34,21 @@ if [[ ${#scripts[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# Distro filter: a script whose filename contains `-ubuntu-` runs only on
-# ubuntu* images; `-rocky-` runs only on rocky* images; everything else
-# runs on both. The convention is part of the filename so filtering stays
-# obvious at the call site.
+# Distro filter: a script whose filename contains `-ubuntu-` OR ends in
+# `-ubuntu` runs only on ubuntu* images; `-rocky-` or `-rocky` suffix runs
+# only on rocky* images; everything else runs on both. The convention is
+# part of the filename so filtering stays obvious at the call site.
 distro_family="${distro%%[0-9]*}"
 
 fail=0
 for s in "${scripts[@]}"; do
     name="$(basename "$s" .sh)"
     case "$name" in
-        *-ubuntu-*) [[ "$distro_family" == "ubuntu" ]] || {
+        *-ubuntu-* | *-ubuntu) [[ "$distro_family" == "ubuntu" ]] || {
             echo "--- $name skipped on $distro ---"
             continue
         } ;;
-        *-rocky-*) [[ "$distro_family" == "rocky" ]] || {
+        *-rocky-* | *-rocky) [[ "$distro_family" == "rocky" ]] || {
             echo "--- $name skipped on $distro ---"
             continue
         } ;;

@@ -36,7 +36,7 @@ untraced rows.
 
 | Req ID | Summary | Category | Verifying Test IDs | Section 4 Flow | Notes |
 |---|---|---|---|---|---|
-| R-01 | `curl ... \| bash` bootstrap installs prereqs (chezmoi, rbw, direnv, pinentries, git, curl) | Bootstrap | E2E-01, IT-08, `tests/unit/direnv.bats` (BASE_PREREQS) | §4.2 | |
+| R-01 | `curl ... \| bash` bootstrap installs prereqs (chezmoi, rbw, direnv, pinentries, git, curl) | Bootstrap | E2E-01, E2E-09, IT-08, MV-01, `tests/unit/direnv.bats` (BASE_PREREQS) | §4.2 | E2E-09 exercises the real `curl \| bash` path end-to-end against live apt via loopback HTTP server |
 | R-02 | Abort when OS is not Ubuntu 24.04+ or RHEL 9+/family | Bootstrap | IT-01, `tests/unit/os-detection.bats` (`die_if_unsupported_os`) | §4.2 | 5 mocked-os-release unit tests cover Rocky 10, Ubuntu 26, Fedora, CentOS, AlmaLinux |
 | R-03 | Abort if invoked as root without `--allow-root` | Bootstrap | E2E-08, `tests/unit/install.bats` (preflight root tests) | §4.2 | Override path also covered (`--allow-root` accepted) |
 | R-04 | `--dry-run` prints actions without executing | Bootstrap | `tests/unit/install.bats` (parse_flags sets DRY_RUN), IT-08 | §4.2 | `chezmoi apply --dry-run` wired via `make apply-dry` |
