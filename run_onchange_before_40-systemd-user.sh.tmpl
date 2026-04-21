@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# run_onchange_before_40-systemd-user.sh — install and enable beget-managed
+# user-level systemd units.
+#
+# Copies every unit file from share/systemd/user/ to
+# ~/.config/systemd/user/, runs `systemctl --user daemon-reload`, and
+# enables the units whose names match our shipped timers/services so that
+# the corresponding timers fire on the next graphical session.
+#
+# The script is idempotent: install -T overwrites byte-for-byte, and
+# systemctl enable is a no-op when already enabled. `daemon-reload` is
+# safe to re-run.
+#
+# chezmoi re-trigger hashes:
+#   rss service:  {{ include "dot_local/share/beget/systemd/user/gnome-shell-rss-sample.service" | sha256sum }}
+#   rss timer:    {{ include "dot_local/share/beget/systemd/user/gnome-shell-rss-sample.timer" | sha256sum }}
+#   portal svc:   {{ include "dot_local/share/beget/systemd/user/restart-xdg-portal.service" | sha256sum }}
+#   portal timer: {{ include "dot_local/share/beget/systemd/user/restart-xdg-portal.timer" | sha256sum }}
+#
+# Test seams (env-var overrides, default shown):
+#   BEGET_SYSTEMD_USER_SRC_DIR  — $HOME/.local/share/beget/systemd/user
+#   BEGET_SYSTEMD_USER_DEST_DIR — $HOME/.config/systemd/user
+#   BEGET_SYSTEMCTL             — systemctl
+#   BEGET_SKIP_SYSTEMCTL        — "1" to skip daemon-reload and enable
+
+set -euo pipefail
+
+BEGET_SYSTEMD_USER_SRC_DIR="${BEGET_SYSTEMD_USER_SRC_DIR:-${HOME}/.local/share/beget/systemd/user}"
+BEGET_SYSTEMD_USER_DEST_DIR="${BEGET_SYSTEMD_USER_DEST_DIR:-${HOME}/.config/systemd/user}"
+BEGET_SYSTEMCTL="${BEGET_SYSTEMCTL:-systemctl}"
+
+# Units that should be actively enabled after install. We enable the .timer
+# units (the .service is triggered by the timer, so doesn't need an enable
+# of its own).
+ENABLE_UNITS=(
+    gnome-shell-rss-sample.timer
+    restart-xdg-portal.timer
+)
+
+install_unit() {
+    local src="$1"
+    local name
+    name=$(basename "$src")
+    install -D -m 0644 -T "$src" "${BEGET_SYSTEMD_USER_DEST_DIR}/${name}"
+    printf 'run_onchange_before_40-systemd-user: installed %s\n' "$name" >&2
+}
+
+main() {
+    if [[ ! -d "$BEGET_SYSTEMD_USER_SRC_DIR" ]]; then
+        printf 'run_onchange_before_40-systemd-user: source dir missing: %s\n' \
+            "$BEGET_SYSTEMD_USER_SRC_DIR" >&2
+        return 1
+    fi
+
+    install -d -m 0755 "$BEGET_SYSTEMD_USER_DEST_DIR"
+
+    shopt -s nullglob
+    local f
+    for f in "$BEGET_SYSTEMD_USER_SRC_DIR"/*.service \
+             "$BEGET_SYSTEMD_USER_SRC_DIR"/*.timer; do
+        install_unit "$f"
+    done
+    shopt -u nullglob
+
+    if [[ "${BEGET_SKIP_SYSTEMCTL:-}" == "1" ]]; then
+        return 0
+    fi
+
+    "$BEGET_SYSTEMCTL" --user daemon-reload
+    local unit
+    for unit in "${ENABLE_UNITS[@]}"; do
+        "$BEGET_SYSTEMCTL" --user enable --now "$unit"
+    done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

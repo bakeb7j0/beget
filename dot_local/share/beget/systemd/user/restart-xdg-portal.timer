@@ -1,0 +1,15 @@
+[Unit]
+# BUG-WORKAROUND — partner timer for restart-xdg-portal.service.
+# Fires every 30 minutes; picked empirically to be shorter than the typical
+# deadlock window but long enough to be invisible to the user.
+Description=Periodic xdg-desktop-portal restart [BUG-WORKAROUND]
+PartOf=graphical-session.target
+
+[Timer]
+OnActiveSec=10min
+OnUnitActiveSec=30min
+Unit=restart-xdg-portal.service
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,24 @@
+[Unit]
+# BUG-WORKAROUND
+# ---------------
+# xdg-desktop-portal periodically deadlocks under GNOME/Wayland, after which
+# file-picker dialogs from Flatpak/snap apps hang indefinitely until the
+# portal is restarted. Upstream bug trackers have this open for years across
+# multiple distributions; no stable fix has landed. The accepted workaround
+# is to bounce the portal on a timer.
+#
+# Partner timer: restart-xdg-portal.timer. This is a workstation-only unit
+# and is intended to be REPLACED once upstream resolves the deadlock.
+Description=Restart xdg-desktop-portal to work around session deadlocks [BUG-WORKAROUND]
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+# `systemctl --user restart xdg-desktop-portal.service` is safe even when
+# the portal is healthy: a single restart is ~200ms and doesn't drop any
+# in-flight dialogs (those were already stuck).
+ExecStart=/usr/bin/systemctl --user restart xdg-desktop-portal.service
+
+[Install]
+WantedBy=graphical-session.target

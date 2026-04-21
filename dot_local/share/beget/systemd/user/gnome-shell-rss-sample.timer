@@ -1,0 +1,16 @@
+[Unit]
+# Timer partner for gnome-shell-rss-sample.service. Fires on session start
+# (OnActiveSec=1min) and every 5 minutes thereafter. Persistent=false because
+# we only care about live session data — skipped runs during shutdown are
+# not worth catching up on.
+Description=Periodic gnome-shell RSS sampler
+PartOf=graphical-session.target
+
+[Timer]
+OnActiveSec=1min
+OnUnitActiveSec=5min
+Unit=gnome-shell-rss-sample.service
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

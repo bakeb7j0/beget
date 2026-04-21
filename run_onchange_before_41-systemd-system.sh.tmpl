@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# run_onchange_before_41-systemd-system.sh — install and enable
+# beget-managed SYSTEM-LEVEL systemd units. Workstation tag scope: chezmoi
+# only materializes this file on workstation-tagged hosts (filename carries
+# no tag prefix; chezmoi.toml's `excludeTags` for server/minimal filters it
+# out in those roles).
+#
+# Requires sudo for the copy into /etc/systemd/system and for the systemctl
+# invocations. The script itself is idempotent.
+#
+# chezmoi re-trigger hashes:
+#   node_exporter: {{ include "dot_local/share/beget/systemd/system/node_exporter.service" | sha256sum }}
+#   ttyd-sesh:     {{ include "dot_local/share/beget/systemd/system/ttyd-sesh.service" | sha256sum }}
+#   chronyd:       {{ include "dot_local/share/beget/systemd/system/chronyd.service" | sha256sum }}
+#
+# Test seams (env-var overrides):
+#   BEGET_SYSTEMD_SYS_SRC_DIR   — $HOME/.local/share/beget/systemd/system
+#   BEGET_SYSTEMD_SYS_DEST_DIR  — /etc/systemd/system
+#   BEGET_SUDO                  — sudo
+#   BEGET_SYSTEMCTL             — systemctl
+#   BEGET_SKIP_SYSTEMCTL        — "1" to skip daemon-reload and enable
+
+set -euo pipefail
+
+BEGET_SYSTEMD_SYS_SRC_DIR="${BEGET_SYSTEMD_SYS_SRC_DIR:-${HOME}/.local/share/beget/systemd/system}"
+BEGET_SYSTEMD_SYS_DEST_DIR="${BEGET_SYSTEMD_SYS_DEST_DIR:-/etc/systemd/system}"
+BEGET_SUDO="${BEGET_SUDO:-sudo}"
+BEGET_SYSTEMCTL="${BEGET_SYSTEMCTL:-systemctl}"
+
+ENABLE_UNITS=(
+    node_exporter.service
+    ttyd-sesh.service
+    chronyd.service
+)
+
+install_unit() {
+    local src="$1"
+    local name
+    name=$(basename "$src")
+    "$BEGET_SUDO" install -D -m 0644 -T "$src" "${BEGET_SYSTEMD_SYS_DEST_DIR}/${name}"
+    printf 'run_onchange_before_41-systemd-system: installed %s\n' "$name" >&2
+}
+
+main() {
+    if [[ ! -d "$BEGET_SYSTEMD_SYS_SRC_DIR" ]]; then
+        printf 'run_onchange_before_41-systemd-system: source dir missing: %s\n' \
+            "$BEGET_SYSTEMD_SYS_SRC_DIR" >&2
+        return 1
+    fi
+
+    "$BEGET_SUDO" install -d -m 0755 "$BEGET_SYSTEMD_SYS_DEST_DIR"
+
+    shopt -s nullglob
+    local f
+    for f in "$BEGET_SYSTEMD_SYS_SRC_DIR"/*.service; do
+        install_unit "$f"
+    done
+    shopt -u nullglob
+
+    if [[ "${BEGET_SKIP_SYSTEMCTL:-}" == "1" ]]; then
+        return 0
+    fi
+
+    "$BEGET_SUDO" "$BEGET_SYSTEMCTL" daemon-reload
+    local unit
+    for unit in "${ENABLE_UNITS[@]}"; do
+        "$BEGET_SUDO" "$BEGET_SYSTEMCTL" enable --now "$unit"
+    done
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

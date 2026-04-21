@@ -1,0 +1,19 @@
+[Unit]
+# Periodically capture /proc/self/status RSS for gnome-shell so we can spot
+# runaway memory growth over a session. Partner timer unit fires the service
+# every 5 minutes; the sample is appended to a per-boot log under
+# $XDG_STATE_HOME/beget-gnome-rss.log. Intended for workstation roles where
+# gnome-shell memory leaks are a long-standing irritant.
+Description=Sample gnome-shell RSS memory usage
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+# Sample the resident-set size of gnome-shell (if running) and append a
+# timestamped line. A missing gnome-shell PID is logged but not fatal: under
+# failover scenarios the desktop may not have come up yet.
+ExecStart=/bin/sh -c 'ts=$(date -Iseconds); pid=$(pgrep -x gnome-shell | head -n1); if [ -n "$pid" ]; then rss=$(awk "/^VmRSS:/ {print \\$2}" /proc/$pid/status); echo "$ts rss_kb=$rss pid=$pid" >> "${XDG_STATE_HOME:-$HOME/.local/state}/beget-gnome-rss.log"; else echo "$ts rss_kb=N/A (no gnome-shell)" >> "${XDG_STATE_HOME:-$HOME/.local/state}/beget-gnome-rss.log"; fi'
+
+[Install]
+WantedBy=graphical-session.target
