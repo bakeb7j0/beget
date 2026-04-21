@@ -40,3 +40,10 @@ tests/results/
 # Go
 *.test
 *.out
+
+# Agent session-local / runtime state
+.claude/status/
+.claude/context-states/
+.claude/crystallizer.log
+.status-panel.html
+.wtf/
