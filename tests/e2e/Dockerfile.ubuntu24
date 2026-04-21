@@ -1,0 +1,41 @@
+# Dockerfile.ubuntu24 -- E2E base image (Ubuntu 24.04).
+#
+# Provides the minimum tooling a beget E2E test needs to exercise
+# install.sh and chezmoi's render path. We deliberately pre-install
+# chezmoi + rbw + the shell chain so individual E2E scripts don't each
+# pay the apt-install tax; every container is ephemeral so tests stay
+# independent (no shared state per spec AC).
+#
+# Test-only mock rbw is injected by run-e2e.sh as a bind-mounted PATH
+# override; we don't bake it in here so production and test images
+# diverge only via PATH.
+
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+RUN apt-get update -qq \
+    && apt-get install -yq --no-install-recommends \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        sudo \
+        shellcheck \
+        tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install chezmoi at a pinned version. We skip rbw — tests that need it
+# install a shim in tests/e2e/fixtures/.
+RUN curl -fsSL get.chezmoi.io | sh -s -- -b /usr/local/bin -t v2.55.0
+
+# Create an unprivileged user matching the spec's non-root constraint
+# (R-03). Uid 1000 is the conventional first-user uid on Ubuntu images.
+RUN useradd -m -s /bin/bash -u 1000 beget \
+    && printf 'beget ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/beget
+
+USER beget
+WORKDIR /home/beget/src

@@ -46,7 +46,11 @@ for s in "${scripts[@]}"; do
     # No --privileged: the e2e scripts under tests/e2e/ don't touch systemd or
     # devices. If a future test needs a specific capability, add it narrowly
     # (--cap-add=...) with justification rather than re-enabling --privileged.
-    if ! docker run --rm -v "$PWD:/src" -w /src "$image" bash "$s"; then
+    # --user matches host uid/gid so JUnit writes to the bind-mounted
+    # tests/results/ succeed on CI runners (workspace uid != container uid).
+    # The non-root path (R-03) relies on euid != 0, which any non-zero uid
+    # satisfies; e2e-08 stubs current_euid() rather than using the real uid.
+    if ! docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" -w /src "$image" bash "$s"; then
         fail=1
     fi
 done

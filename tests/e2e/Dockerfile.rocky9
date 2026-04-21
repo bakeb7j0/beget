@@ -1,0 +1,28 @@
+# Dockerfile.rocky9 -- E2E base image (Rocky Linux 9).
+#
+# RPM-family counterpart to Dockerfile.ubuntu24. Verifies the Rocky
+# branch of lib/platform.sh's dispatch logic. Minimal tooling only;
+# everything else comes from the test harness.
+
+FROM rockylinux:9
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+RUN dnf install -yq \
+        bash \
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        sudo \
+        tzdata
+
+# Install chezmoi at a pinned version.
+RUN curl -fsSL get.chezmoi.io | sh -s -- -b /usr/local/bin -t v2.55.0
+
+RUN useradd -m -s /bin/bash -u 1000 beget \
+    && printf 'beget ALL=(ALL) NOPASSWD: ALL\n' >/etc/sudoers.d/beget
+
+USER beget
+WORKDIR /home/beget/src
