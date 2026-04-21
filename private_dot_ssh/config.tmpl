@@ -1,0 +1,42 @@
+# ~/.ssh/config — managed by chezmoi via beget
+#
+# Host blocks are ordered most-specific-first (first-match wins). See
+# docs/catalog-a-ssh-identities.md for the authoritative identity list and
+# the rationale for this ordering. Agents implementing #11: do not reorder
+# without updating the catalog first.
+
+# ---- GitLab identities (explicit hostnames / aliases) -----------------------
+
+Host gitlab.com
+    HostName gitlab.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_analogic_gitlab
+    IdentitiesOnly yes
+
+Host gitlab-waveeng
+    HostName gitlab.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519_waveeng_gitlab
+    IdentitiesOnly yes
+
+# ---- Blueshift environments (narrow wildcards first) -----------------------
+
+Host *.dev.blueshift.plus
+    IdentityFile ~/.ssh/id_ed25519_blueshift_dev
+    IdentitiesOnly yes
+
+Host *.test.blueshift.plus
+    IdentityFile ~/.ssh/id_ed25519_blueshift_test
+    IdentitiesOnly yes
+
+# Greedy wildcard — must come after the narrower dev/test blocks above so it
+# does not shadow them. Catches anything under blueshift.plus not matched
+# by the more specific rules.
+Host *.blueshift.plus
+    IdentityFile ~/.ssh/id_ed25519_blueshift_prod
+    IdentitiesOnly yes
+
+# ---- Catch-all default (primary personal identity) -------------------------
+
+Host *
+    IdentityFile ~/.ssh/id_ed25519
