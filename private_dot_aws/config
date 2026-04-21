@@ -2,7 +2,7 @@
 #
 # Non-secret AWS CLI configuration. Per-profile region defaults live here;
 # long-lived credentials live in ~/.aws/credentials (rendered from
-# Vaultwarden — see private_dot_aws/credentials.tmpl).
+# Vaultwarden — see private_dot_aws/private_credentials.tmpl).
 #
 # Catalog B lists all long-lived profiles at us-east-1. SSO / session
 # profiles (if any) get added below with `sso_session` references — they

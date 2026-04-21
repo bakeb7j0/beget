@@ -26,7 +26,7 @@ run_test() (
     assert_match "$rendered" "OPENSSH PRIVATE KEY" "SSH key materialized" || return 1
     assert_match "$rendered" "AAAAMOCK" "mock marker present" || return 1
 
-    local aws_tpl="$REPO/private_dot_aws/credentials.tmpl"
+    local aws_tpl="$REPO/private_dot_aws/private_credentials.tmpl"
     if [[ -f "$aws_tpl" ]]; then
         local rendered2
         rendered2="$(chezmoi execute-template --source "$REPO" <"$aws_tpl")" || return 1

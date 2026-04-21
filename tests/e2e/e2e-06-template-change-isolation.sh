@@ -14,7 +14,7 @@ run_test() (
     cd "$REPO" || return 1
 
     local gitconfig_tpl="$REPO/dot_gitconfig.tmpl"
-    local aws_tpl="$REPO/private_dot_aws/credentials.tmpl"
+    local aws_tpl="$REPO/private_dot_aws/private_credentials.tmpl"
 
     if [[ ! -f "$gitconfig_tpl" || ! -f "$aws_tpl" ]]; then
         _assert_fail "required templates missing"

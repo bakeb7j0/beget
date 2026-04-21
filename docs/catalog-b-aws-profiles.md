@@ -82,7 +82,7 @@ should follow the order declared in the table above.
 
 1. Append a row above.
 2. Create the `aws-<profile>` item in Vaultwarden with the required fields.
-3. `credentials.tmpl` rebuilds automatically from the catalog — no per-profile
+3. `private_credentials.tmpl` rebuilds automatically from the catalog — no per-profile
    template edits needed if the template is a loop over the catalog. If the
    template is one block per profile, add the block.
 4. Set region in `dot_aws/config.tmpl` under `[profile <name>]`.
