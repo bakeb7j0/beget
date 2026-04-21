@@ -1,0 +1,8 @@
+; ~/.gitconfig-analogic — managed by chezmoi via beget
+;
+; Included by ~/.gitconfig when the active repo has a remote under
+; git@gitlab.com:analogicdev/**. Overrides user.email to the Analogic
+; address; inherits user.name from the base config.
+
+[user]
+    email = brbaker@analogic.com
