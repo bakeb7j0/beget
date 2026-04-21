@@ -42,8 +42,6 @@ tests/results/
 *.out
 
 # Agent session-local / runtime state
-.claude/status/
-.claude/context-states/
-.claude/crystallizer.log
+.claude/
 .status-panel.html
 .wtf/
