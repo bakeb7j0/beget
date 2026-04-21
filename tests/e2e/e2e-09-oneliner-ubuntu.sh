@@ -91,9 +91,11 @@ run_test() {
     # curl/git/bash all live in /usr/bin, so install.sh's prereqs are
     # unaffected; the pre-baked chezmoi becomes invisible to
     # `command -v` and install_chezmoi runs its real install flow.
-    # install_chezmoi installs to $HOME/.local/bin, which is added to
-    # PATH below so the post-conditions can see it.
-    export PATH="${HOME}/.local/bin:/usr/bin:/bin"
+    # install_chezmoi / install_direnv install to $HOME/.local/bin;
+    # install_rbw uses `cargo install` which lands in $HOME/.cargo/bin.
+    # Both dirs are prepended so post-condition `command -v` checks see
+    # freshly-installed binaries.
+    export PATH="${HOME}/.local/bin:${HOME}/.cargo/bin:/usr/bin:/bin"
     hash -r
     if command -v chezmoi >/dev/null 2>&1; then
         _assert_fail "chezmoi still on PATH after scrub: $(command -v chezmoi)"
