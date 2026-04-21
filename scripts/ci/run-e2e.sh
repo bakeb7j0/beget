@@ -4,19 +4,14 @@
 # Usage: scripts/ci/run-e2e.sh <distro>
 # where <distro> matches a Dockerfile.<distro> under tests/e2e/.
 #
-# Delegates to `make test-e2e` when wired up (Story #29). Until then, the
-# fallback builds the Dockerfile for <distro>, runs each e2e-XX-*.sh inside
-# a fresh container, and captures a single-suite JUnit XML.
+# Single engine for E2E: CI calls it per-distro as separate jobs; `make
+# test-e2e` calls it for both distros (or one, if DISTRO is set). Do not
+# add a delegation-to-make guard here — it would recurse.
 set -euo pipefail
 
 distro="${1:?distro argument required (ubuntu24 | rocky9)}"
 
 mkdir -p tests/results
-
-# Preferred path once Story #29 lands.
-if make -n test-e2e >/dev/null 2>&1; then
-    exec make test-e2e DISTRO="$distro"
-fi
 
 dockerfile="tests/e2e/Dockerfile.${distro}"
 if [[ ! -f "$dockerfile" ]]; then
