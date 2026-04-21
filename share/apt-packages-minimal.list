@@ -1,0 +1,10 @@
+# share/apt-packages-minimal.list — bare-metal survival kit.
+#
+# Used on the `minimal` role ONLY (containers, CI runners, headless VMs).
+# Installed instead of the common list. One package per line;
+# blank lines and `#` comments ignored.
+
+bash
+ca-certificates
+curl
+git
