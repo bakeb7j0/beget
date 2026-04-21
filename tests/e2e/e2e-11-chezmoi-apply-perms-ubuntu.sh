@@ -95,12 +95,15 @@ run_test() {
 
     # Apply. --source points at the working-tree checkout, so we
     # exercise the source state currently under review rather than a
-    # cloned copy. --exclude=scripts suppresses the run_onchange_*
-    # dotfiles, which would otherwise try to register apt/dnf repos,
-    # install packages, enable sysctls, etc. The apply-mode file
-    # materialization (mode bits, private_ prefix, symlinks) is what
-    # R-17/R-18 actually require, and that's what we want to measure.
-    if ! chezmoi apply --source "$REPO" --exclude=scripts 2>"$FAKE_HOME/apply.stderr"; then
+    # cloned copy. --exclude=scripts,externals suppresses both the
+    # run_onchange_* dotfiles (which register apt/dnf repos, install
+    # packages, enable sysctls, etc.) and the .chezmoiexternal.toml
+    # git-repo clones (R-36 upstream projects like claude-code-switch)
+    # that would otherwise try to hit github.com from the hermetic
+    # e2e job. The apply-mode file materialization (mode bits,
+    # private_ prefix, symlinks) is what R-17/R-18 actually require,
+    # and that's what we want to measure.
+    if ! chezmoi apply --source "$REPO" --exclude=scripts,externals 2>"$FAKE_HOME/apply.stderr"; then
         echo "--- chezmoi apply stderr ---" >&2
         cat "$FAKE_HOME/apply.stderr" >&2
         _assert_fail "chezmoi apply exited non-zero"
@@ -178,7 +181,7 @@ run_test() {
     # insurance against coarse-grained timestamp support.
     sleep 1
 
-    if ! chezmoi apply --source "$REPO" --exclude=scripts 2>"$FAKE_HOME/apply2.stderr"; then
+    if ! chezmoi apply --source "$REPO" --exclude=scripts,externals 2>"$FAKE_HOME/apply2.stderr"; then
         echo "--- second apply stderr ---" >&2
         cat "$FAKE_HOME/apply2.stderr" >&2
         _assert_fail "second chezmoi apply exited non-zero (idempotency regression)"
