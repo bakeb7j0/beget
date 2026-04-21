@@ -1022,7 +1022,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 
 **Acceptance criteria**:
 - [ ] common.list ≥20 base packages
-- [ ] workstation.list covers GUI/desktop from Catalog K
+- [ ] workstation.list covers GUI/desktop categories (browsers, editors/IDEs, messaging, media, fonts)
 - [ ] Script runs `apt-get install -y` on Ubuntu; equivalent on RHEL
 - [ ] Role scoping: minimal installs only minimal; workstation installs common + workstation
 - [ ] Idempotent
@@ -1105,7 +1105,7 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 **Test procedures**: IT-01 per script, E2E-04 (binary --version).
 
 **Acceptance criteria**:
-- [ ] Every Catalog L binary has install script
+- [ ] Every binary listed in implementation steps 1-7 has an install script
 - [ ] Each documents source, version, checksum
 - [ ] Idempotent (skips correct-version installs)
 - [ ] Fails clean on 404/checksum mismatch
