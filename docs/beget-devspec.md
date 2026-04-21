@@ -190,9 +190,9 @@ This project is explicitly NOT:
 
 ### Theme 5 — Secrets: File Materialization (chezmoi-templated)
 
-**R-17** — When `chezmoi apply` runs with rbw initialized, the system shall materialize SSH private keys listed in Catalog Section A to `~/.ssh/` with 0600 permissions.
+**R-17** — When `chezmoi apply` runs with rbw initialized, the system shall materialize SSH private keys listed in Catalog Section A to `~/.ssh/` with 0600 permissions. Catalog Section A is maintained in `docs/catalog-a-ssh-identities.md`.
 
-**R-18** — When `chezmoi apply` runs with rbw initialized, the system shall materialize `~/.aws/credentials` from rbw items matching `aws-<profile>` (for profiles with long-lived creds) with 0600 permissions.
+**R-18** — When `chezmoi apply` runs with rbw initialized, the system shall materialize `~/.aws/credentials` from rbw items matching `aws-<profile>` (for profiles with long-lived creds) with 0600 permissions. Catalog Section B is maintained in `docs/catalog-b-aws-profiles.md`.
 
 **R-19** — When a secret is updated in Vaultwarden and `chezmoi apply` is subsequently invoked, the system shall update dependent materialized files.
 
