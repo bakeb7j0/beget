@@ -88,12 +88,15 @@ parse_flags() {
     local arg
     for arg in "$@"; do
         case "$arg" in
-            --dry-run)       DRY_RUN=1 ;;
-            --role=*)        ROLE="${arg#--role=}" ;;
-            --skip-secrets)  SKIP_SECRETS=1 ;;
-            --allow-root)    ALLOW_ROOT=1 ;;
-            --help|-h)       usage; exit 0 ;;
-            *)               die "unknown flag: $arg (see --help)" ;;
+            --dry-run) DRY_RUN=1 ;;
+            --role=*) ROLE="${arg#--role=}" ;;
+            --skip-secrets) SKIP_SECRETS=1 ;;
+            --allow-root) ALLOW_ROOT=1 ;;
+            --help | -h)
+                usage
+                exit 0
+                ;;
+            *) die "unknown flag: $arg (see --help)" ;;
         esac
     done
 

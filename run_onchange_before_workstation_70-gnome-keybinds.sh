@@ -79,8 +79,8 @@ gset() {
 get_current_array() {
     # Returns current custom-keybindings array as a raw GSettings literal,
     # e.g. "@as []" or "['/a/', '/b/']". We just pass it back through.
-    "$BEGET_GSETTINGS" get "$CUSTOM_KEYS_SCHEMA" "$CUSTOM_KEYS_KEY" 2>/dev/null \
-        || printf "@as []"
+    "$BEGET_GSETTINGS" get "$CUSTOM_KEYS_SCHEMA" "$CUSTOM_KEYS_KEY" 2>/dev/null ||
+        printf "@as []"
 }
 
 array_contains_path() {
@@ -117,7 +117,7 @@ write_binding_triple() {
     local slug="$1" name="$2" command="$3" shortcut="$4"
     local path="${CUSTOM_KEYS_PREFIX}/${slug}/"
     # Use the relocatable-schema-at-path form: `gsettings set <schema>:<path>`
-    gset set "${BINDING_SCHEMA}:${path}" name    "$name"
+    gset set "${BINDING_SCHEMA}:${path}" name "$name"
     gset set "${BINDING_SCHEMA}:${path}" command "$command"
     gset set "${BINDING_SCHEMA}:${path}" binding "$shortcut"
 }
@@ -127,8 +127,8 @@ read_binding_name() {
     # GSettings emits strings wrapped in single quotes, e.g. 'beget:cheet-tldr'.
     # Strip only the wrapping pair (not embedded apostrophes); `tr -d` would
     # flatten a binding name that legitimately contained "'".
-    "$BEGET_GSETTINGS" get "${BINDING_SCHEMA}:${path}" name 2>/dev/null \
-        | sed "s/^'//; s/'\$//" || printf ''
+    "$BEGET_GSETTINGS" get "${BINDING_SCHEMA}:${path}" name 2>/dev/null |
+        sed "s/^'//; s/'\$//" || printf ''
 }
 
 install_binding() {
@@ -159,8 +159,8 @@ install_binding() {
 }
 
 main() {
-    if ! command -v "$BEGET_GSETTINGS" >/dev/null 2>&1 \
-       && [[ "${BEGET_DRY_RUN:-}" != "1" ]]; then
+    if ! command -v "$BEGET_GSETTINGS" >/dev/null 2>&1 &&
+        [[ "${BEGET_DRY_RUN:-}" != "1" ]]; then
         printf 'gnome-keybinds: %s not on PATH; skipping (non-GNOME host?)\n' \
             "$BEGET_GSETTINGS" >&2
         return 0

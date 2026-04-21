@@ -100,9 +100,9 @@ classify_artifact() {
     local url="$1"
     local lower="${url,,}"
     case "$lower" in
-        *.tar.gz|*.tgz) printf 'tar.gz' ;;
-        *.zip)          printf 'zip' ;;
-        *)              printf 'raw' ;;
+        *.tar.gz | *.tgz) printf 'tar.gz' ;;
+        *.zip) printf 'zip' ;;
+        *) printf 'raw' ;;
     esac
 }
 
@@ -151,7 +151,7 @@ install_aws_from_extracted() {
     fi
     "$installer" \
         --install-dir "${HOME}/.local/aws-cli" \
-        --bin-dir     "$BEGET_BIN_DIR" \
+        --bin-dir "$BEGET_BIN_DIR" \
         --update
 }
 
@@ -244,8 +244,8 @@ main() {
 
         # Idempotency: skip if the installed binary already reports the
         # expected version. Test seam BEGET_DRY_RUN forces re-install.
-        if [[ "${BEGET_DRY_RUN:-}" != "1" ]] \
-           && current_version_matches "$name" "$version"; then
+        if [[ "${BEGET_DRY_RUN:-}" != "1" ]] &&
+            current_version_matches "$name" "$version"; then
             printf 'tool-download: %s v%s already current, skipping\n' \
                 "$name" "$version" >&2
             continue

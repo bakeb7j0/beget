@@ -50,8 +50,8 @@ current_version_matches() {
 main() {
     install -d -m 0755 "$BEGET_BIN_DIR"
 
-    if [[ "${BEGET_CARBONYL_DRY_RUN:-}" != "1" ]] \
-       && current_version_matches; then
+    if [[ "${BEGET_CARBONYL_DRY_RUN:-}" != "1" ]] &&
+        current_version_matches; then
         printf 'tool-carbonyl: v%s already current, skipping\n' \
             "$BEGET_CARBONYL_VERSION" >&2
         return 0
