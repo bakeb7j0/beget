@@ -1,8 +1,7 @@
 # Catalog B — AWS Profiles (long-lived credentials)
 
-**Status:** `placeholder` — profile inventory backfilled 2026-04-20 from
-`~/sysadmin/unresolved-issues/beget-sketchbook.md` §B. 8 of 9 profiles still
-need BJ's long-lived-vs-SSO disposition before wave-2b (#12) can execute.
+**Status:** `filled` (2026-04-20). All 8 profiles below classified long-lived.
+`alog-admin` — originally in the sketchbook list — was dropped (not needed).
 
 Materialized form of Dev Spec R-18: profiles in `~/.aws/credentials` that
 `chezmoi apply` renders from Vaultwarden items. One row per profile. Agents
@@ -27,51 +26,52 @@ Only **long-lived-credential** profiles belong here. Session/SSO profiles
 
 ## Profile inventory (from sketchbook §B)
 
-All AWS CLI profiles currently declared in malory's `~/.aws/config`. Each
-needs a disposition before it can be promoted into the long-lived-credentials
-table below. Fields BJ still needs to fill: **Disposition**, and for
-long-lived profiles, **Purpose** (one line).
+The AWS CLI profiles beget will materialize via chezmoi, with dispositions
+confirmed by BJ. `alog-admin` — originally present in the sketchbook
+inventory — has been dropped (not needed).
 
 | Profile | Disposition | Purpose |
 |---|---|---|
-| `default`         | TODO(BJ) long-lived or SSO? | TODO(BJ) — personal-account default |
-| `bedrock`         | TODO(BJ) long-lived or SSO? | TODO(BJ) |
-| `bedrock-sync`    | TODO(BJ) long-lived or SSO? | TODO(BJ) |
-| `alog-admin`      | **SSO** — not materialized by chezmoi; lives in `~/.aws/config` only | Analogic admin access via IAM Identity Center (sso-session paired) |
-| `aws-admin`       | TODO(BJ) long-lived or SSO? | TODO(BJ) |
-| `s3-mgmt-bot`     | TODO(BJ) long-lived or SSO? | TODO(BJ) — S3 management automation |
-| `test-deploy-bot` | TODO(BJ) long-lived or SSO? | TODO(BJ) — test-env deploy automation |
-| `dev-deploy-bot`  | TODO(BJ) long-lived or SSO? | TODO(BJ) — dev-env deploy automation |
-| `prod-deploy-bot` | TODO(BJ) long-lived or SSO? | TODO(BJ) — prod-env deploy automation |
+| `default`         | long-lived | analogic dev access |
+| `bedrock`         | long-lived | AI resources in dev |
+| `bedrock-sync`    | long-lived | AI resources in dev |
+| `aws-admin`       | long-lived | admin account for dev |
+| `s3-mgmt-bot`     | long-lived | dev account S3 management automation |
+| `test-deploy-bot` | long-lived | test-env deploy automation |
+| `dev-deploy-bot`  | long-lived | dev-env deploy automation |
+| `prod-deploy-bot` | long-lived | prod-env deploy automation |
 
-Once each profile is classified, move long-lived ones into the
-**Long-lived credentials** table below and strike them from the
-inventory row count. The `alog-admin` SSO row stays here for
-completeness (explicitly out of scope for this catalog — see Scope above).
+All 8 profiles appear in the Long-lived credentials table below. No SSO
+profiles in this catalog (none in the current inventory).
 
 ## Long-lived credentials
 
 Profiles with long-lived static credentials (materialized by chezmoi from
-Vaultwarden). Populated from the inventory above as BJ classifies each
-profile. Until the inventory has 0 TODO rows, **Status** at the top of this
-file remains `placeholder` and agents implementing #12 should refuse to
-execute.
+Vaultwarden). `default` first, then alphabetical — per the rendering order
+convention below.
 
 | Profile | VW item | Region default | Purpose |
 |---|---|---|---|
-| _(empty — awaiting BJ dispositions in inventory above)_ | — | — | — |
+| `default`         | `aws-default`         | `us-east-1` | analogic dev access |
+| `aws-admin`       | `aws-aws-admin`       | `us-east-1` | admin account for dev |
+| `bedrock`         | `aws-bedrock`         | `us-east-1` | AI resources in dev |
+| `bedrock-sync`    | `aws-bedrock-sync`    | `us-east-1` | AI resources in dev |
+| `dev-deploy-bot`  | `aws-dev-deploy-bot`  | `us-east-1` | dev-env deploy automation |
+| `prod-deploy-bot` | `aws-prod-deploy-bot` | `us-east-1` | prod-env deploy automation |
+| `s3-mgmt-bot`     | `aws-s3-mgmt-bot`     | `us-east-1` | dev account S3 management automation |
+| `test-deploy-bot` | `aws-test-deploy-bot` | `us-east-1` | test-env deploy automation |
 
-**Conventions (to apply when populating rows):**
+**Conventions encoded above:**
 
-- VW item name is `aws-<profile>` (e.g. `aws-default`, `aws-s3-mgmt-bot`),
-  with `username = AccessKeyId`, `password = SecretAccessKey` — per sketchbook
-  lines 273-277.
-- Region default is `us-east-1` unless the profile needs otherwise
-  (sketchbook line 440: `AWS_REGION=us-east-1` is the non-secret global
-  default); override per profile in `~/.aws/config` if needed.
+- VW item name is `aws-<profile>`, with `username = AccessKeyId`,
+  `password = SecretAccessKey` — per sketchbook lines 273-277.
+- Region default is `us-east-1` globally (sketchbook line 440:
+  `AWS_REGION=us-east-1` is the non-secret default); override per profile in
+  `~/.aws/config` if any profile ever needs a different region.
 
-No row is added to this table until its disposition in the inventory above
-flips from `TODO(BJ)` to `long-lived`. SSO profiles never appear here.
+New rows added in the future: match inventory disposition first. Only
+profiles dispositioned `long-lived` appear here; SSO profiles live in
+`~/.aws/config` only, not this catalog.
 
 ## `~/.aws/credentials` rendering order
 
