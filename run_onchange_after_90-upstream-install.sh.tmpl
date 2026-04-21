@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+# run_onchange_after_90-upstream-install.sh — run each upstream project's
+# install.sh after chezmoi has cloned it via .chezmoiexternal.toml.
+#
+# Ordering: the `after_` prefix means chezmoi runs this at the END of
+# `apply`, after externals have been materialized. The `90` prefix
+# places it very late so any earlier beget scripts have finished their
+# own install work.
+#
+# Why not run install.sh inside .chezmoiexternal.toml: chezmoi externals
+# have a `postInstall` hook, but only for gitHub-archive / file types,
+# not for git-repo. For git-repo the canonical idiom is an after-hook
+# script like this one.
+#
+# Per R-37: invoke the installer iff the repo ships one. Absence is
+# expected for projects that don't yet have one; we log and continue.
+# Follow-up issues should be opened for missing installers so we don't
+# silently drift.
+#
+# chezmoi re-trigger hash:
+#   {{ include ".chezmoiexternal.toml" | sha256sum }}
+#
+# Test seams (env-var overrides):
+#   BEGET_UPSTREAM_BASE  — $HOME/.local/share
+#   BEGET_UPSTREAM_DRY_RUN — "1" to log without exec
+#   BEGET_UPSTREAM_SKIP  — "1" to skip entirely (for CI-less hosts)
+
+set -euo pipefail
+
+BEGET_UPSTREAM_BASE="${BEGET_UPSTREAM_BASE:-${HOME}/.local/share}"
+
+# List names matches .chezmoiexternal.toml target-dir leafs.
+beget_upstream_projects() {
+    printf '%s\n' \
+        claudecode-workflow \
+        tuneviz \
+        gitlab-settings-automation \
+        release-mgr \
+        claude-code-switch
+}
+
+run_installer() {
+    local name="$1"
+    local dir="${BEGET_UPSTREAM_BASE}/${name}"
+    local installer="${dir}/install.sh"
+
+    if [[ ! -d "$dir" ]]; then
+        printf 'upstream-install: %s not yet cloned at %s, skipping\n' \
+            "$name" "$dir" >&2
+        return 0
+    fi
+
+    if [[ ! -x "$installer" ]]; then
+        # install.sh absent or non-executable → log + follow-up.
+        printf 'upstream-install: %s has no install.sh, skipping (consider follow-up)\n' \
+            "$name" >&2
+        return 0
+    fi
+
+    if [[ "${BEGET_UPSTREAM_DRY_RUN:-}" == "1" ]]; then
+        printf 'upstream-install: DRY-RUN would exec %s\n' "$installer" >&2
+        return 0
+    fi
+
+    printf 'upstream-install: running %s\n' "$installer" >&2
+    if ! ( cd "$dir" && "$installer" ); then
+        printf 'upstream-install: %s installer failed\n' "$name" >&2
+        return 1
+    fi
+}
+
+main() {
+    if [[ "${BEGET_UPSTREAM_SKIP:-}" == "1" ]]; then
+        printf 'upstream-install: BEGET_UPSTREAM_SKIP=1, skipping all\n' >&2
+        return 0
+    fi
+
+    local failures=0
+    local name
+    while IFS= read -r name; do
+        [[ -z "$name" || "${name:0:1}" == "#" ]] && continue
+        if ! run_installer "$name"; then
+            failures=$((failures + 1))
+        fi
+    done < <(beget_upstream_projects)
+
+    if [[ $failures -gt 0 ]]; then
+        printf 'upstream-install: %d installer(s) failed\n' "$failures" >&2
+        return 1
+    fi
+}
+
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
