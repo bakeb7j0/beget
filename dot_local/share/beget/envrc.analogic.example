@@ -1,0 +1,44 @@
+# ~/.local/share/beget/envrc.analogic.example — managed by chezmoi via beget
+#
+# Example `.envrc` for an Analogic work-context directory (e.g., ~/sandbox/analogic).
+# Demonstrates the context-scoped secret pattern (R-29):
+#   - entering the tree materializes Analogic-flavored env vars;
+#   - leaving it unloads them cleanly.
+#
+# Installation (operator, one-time):
+#   cp ~/.local/share/beget/envrc.analogic.example ~/sandbox/analogic/.envrc
+#   cd ~/sandbox/analogic             # direnv will report "blocked"
+#   direnv allow                      # R-28: explicit authorization required
+#
+# The `secret_get` helper is provided by dot_bashrc.d/50-wrappers.sh and is
+# available inside direnv because direnv sources `.envrc` via bash with the
+# parent shell's environment-visible functions re-hydrated when you include
+# them explicitly. For env-var materialization that fails fast, prefer
+# `secret_get` over raw `rbw get` — it routes warnings to stderr and returns
+# non-zero cleanly when Vaultwarden is locked or the item is missing.
+
+# ---- Context marker ---------------------------------------------------------
+# BEGET_CONTEXT is a free-form tag consumed by prompt segments and wrappers
+# that want to show "you're in analogic context" to the operator. Purely
+# informational.
+export BEGET_CONTEXT=analogic
+
+# ---- Analogic GitLab token --------------------------------------------------
+# Resolves the Analogic-scoped GitLab PAT from Vaultwarden. The VW item name
+# follows the Catalog-A convention: <context>-<service>-token.
+#
+# If rbw is locked, secret_get prints a warning and returns 1. direnv treats
+# that as a non-fatal export failure, so GITLAB_TOKEN will be unset; `glab`
+# wrappers will then refuse to run (R-16) rather than silently succeed with
+# stale creds.
+export GITLAB_TOKEN="$(secret_get analogic-gitlab-token)"
+
+# ---- Analogic AWS profile ---------------------------------------------------
+# Select the Analogic AWS profile for every `aws` invocation in this tree.
+# The profile is rendered by private_dot_aws/credentials.tmpl; direnv just
+# points to it. No secret materialization needed here.
+export AWS_PROFILE=analogic-dev
+
+# ---- Optional: PATH extension ------------------------------------------------
+# Uncomment to prepend an analogic-specific scripts directory.
+# PATH_add ~/sandbox/analogic/bin

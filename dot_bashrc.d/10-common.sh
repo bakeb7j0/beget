@@ -46,8 +46,12 @@ elif [ -r "$HOME/.fzf.bash" ]; then
 fi
 
 # ---- direnv ------------------------------------------------------------------
-# Per-directory env management. Placeholder hook — the full wiring lands in
-# the direnv wave; this guards against a missing binary cleanly.
+# Per-directory env management (R-27, R-28). Every cd triggers direnv which
+# checks for an authorized `.envrc` and sources it. Unauthorized files emit
+# a warning ("direnv: error ... is blocked") rather than loading silently —
+# intentional friction, configured by dot_config/direnv/config.toml.
+# Skipped cleanly when the binary is absent (non-workstation hosts).
+# See S2.6 (bakeb7j0/beget#15).
 if command -v direnv >/dev/null 2>&1; then
     eval "$(direnv hook bash)"
 fi
