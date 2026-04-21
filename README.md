@@ -49,6 +49,16 @@ _Stub — detailed prerequisites will be documented as stories land._
 
 Linux only. No macOS, Windows, or BSD support.
 
+## Documentation
+
+- [Development Specification](docs/beget-devspec.md) — problem domain,
+  requirements (R-01..R-46), flows, and phased implementation plan.
+- [Verification Traceability Matrix](docs/beget-vrtm.md) — every
+  requirement traced to its verifying test, flow, or inspection artifact.
+- [Runbook](docs/runbook.md) — day-to-day operational procedures.
+- [Deployment Verification](docs/deployment-verification.md) — post-deploy
+  smoke checklist.
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
