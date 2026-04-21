@@ -35,9 +35,9 @@ beget_pipx_packages() {
 pipx_has_package() {
     local pkg="$1"
     # `pipx list --short` prints "<name> <version>" per line.
-    "$BEGET_PIPX" list --short 2>/dev/null \
-        | awk '{print $1}' \
-        | grep -Fxq "$pkg"
+    "$BEGET_PIPX" list --short 2>/dev/null |
+        awk '{print $1}' |
+        grep -Fxq "$pkg"
 }
 
 install_pipx_package() {

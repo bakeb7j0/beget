@@ -63,10 +63,10 @@ pkg_install() {
     fi
 
     case "$OS_ID" in
-        ubuntu|debian)
+        ubuntu | debian)
             sudo apt-get install -y "$@"
             ;;
-        rocky|rhel|centos|almalinux|fedora)
+        rocky | rhel | centos | almalinux | fedora)
             sudo dnf install -y "$@"
             ;;
         *)
@@ -96,20 +96,20 @@ pkg_repo_add() {
     local yum_dir="${YUM_REPOS_DIR:-/etc/yum.repos.d}"
 
     case "$OS_ID" in
-        ubuntu|debian)
+        ubuntu | debian)
             local keyring_path="/usr/share/keyrings/${name}.gpg"
             local list_path="${apt_dir}/${name}.list"
             # Fetch keyring separately: a sourced library can't set -o pipefail,
             # so curl|gpg would silently swallow a curl failure and write an
             # empty keyring. Fail fast instead.
             local key_bytes
-            key_bytes=$(curl -fsSL "$keyring_url") \
-                || die "pkg_repo_add: failed to fetch keyring: $keyring_url"
+            key_bytes=$(curl -fsSL "$keyring_url") ||
+                die "pkg_repo_add: failed to fetch keyring: $keyring_url"
             printf '%s' "$key_bytes" | sudo gpg --dearmor -o "$keyring_path"
-            printf 'deb [signed-by=%s] %s\n' "$keyring_path" "$url" \
-                | sudo tee "$list_path" >/dev/null
+            printf 'deb [signed-by=%s] %s\n' "$keyring_path" "$url" |
+                sudo tee "$list_path" >/dev/null
             ;;
-        rocky|rhel|centos|almalinux|fedora)
+        rocky | rhel | centos | almalinux | fedora)
             local repo_path="${yum_dir}/${name}.repo"
             sudo curl -fsSL -o "$repo_path" "$url"
             sudo rpm --import "$keyring_url"

@@ -49,8 +49,14 @@ fail=0
 for s in "${scripts[@]}"; do
     name="$(basename "$s" .sh)"
     case "$name" in
-        *-ubuntu-*) [[ "$distro_family" == "ubuntu" ]] || { echo "--- $name skipped on $distro ---"; continue; } ;;
-        *-rocky-*)  [[ "$distro_family" == "rocky"  ]] || { echo "--- $name skipped on $distro ---"; continue; } ;;
+        *-ubuntu-*) [[ "$distro_family" == "ubuntu" ]] || {
+            echo "--- $name skipped on $distro ---"
+            continue
+        } ;;
+        *-rocky-*) [[ "$distro_family" == "rocky" ]] || {
+            echo "--- $name skipped on $distro ---"
+            continue
+        } ;;
     esac
     printf '\n=== %s on %s ===\n' "$name" "$distro"
     # No --privileged: the e2e scripts under tests/e2e/ don't touch systemd or

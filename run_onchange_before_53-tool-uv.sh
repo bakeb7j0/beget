@@ -28,9 +28,9 @@ beget_uv_packages() {
 uv_has_package() {
     local pkg="$1"
     # `uv tool list` prints one tool per line as "<name> v<ver>".
-    "$BEGET_UV" tool list 2>/dev/null \
-        | awk '{print $1}' \
-        | grep -Fxq "$pkg"
+    "$BEGET_UV" tool list 2>/dev/null |
+        awk '{print $1}' |
+        grep -Fxq "$pkg"
 }
 
 install_uv_package() {

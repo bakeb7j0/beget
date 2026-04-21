@@ -77,7 +77,7 @@ install_keyring() {
     # under /etc/apt/keyrings/ are writable.
     local tmp_dearmored
     tmp_dearmored="$(mktemp)"
-    gpg --dearmor < "$tmp" > "$tmp_dearmored"
+    gpg --dearmor <"$tmp" >"$tmp_dearmored"
     "$BEGET_SUDO" install -m 0644 -T "$tmp_dearmored" "$dest_path"
     rm -f "$tmp" "$tmp_dearmored"
     return 0
@@ -96,7 +96,7 @@ write_sources_file() {
     tmp="$(mktemp)"
     # %s is the fully rendered sources line; callers template the dist name in.
     local rendered="${sources_line//\{\{DIST\}\}/$dist}"
-    printf 'deb [signed-by=%s] %s\n' "$keyring_path" "$rendered" > "$tmp"
+    printf 'deb [signed-by=%s] %s\n' "$keyring_path" "$rendered" >"$tmp"
     "$BEGET_SUDO" install -m 0644 -T "$tmp" "$dest"
     rm -f "$tmp"
 }

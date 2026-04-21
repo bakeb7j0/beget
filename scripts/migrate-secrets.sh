@@ -130,7 +130,7 @@ while [[ $# -gt 0 ]]; do
             SOURCE_DIR="${1#--source=}"
             shift
             ;;
-        --help|-h)
+        --help | -h)
             usage
             exit 0
             ;;
@@ -189,7 +189,7 @@ for file in "${files[@]}"; do
     name="$(basename "$file")"
     # Skip hidden dotfiles and any obvious non-secret detritus.
     case "$name" in
-        .*|*.swp|*.bak)
+        .* | *.swp | *.bak)
             log "skip $name (ignored pattern)"
             count_skipped=$((count_skipped + 1))
             continue

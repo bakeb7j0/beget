@@ -89,7 +89,7 @@ main() {
             # minimal role gets only the survival-kit list, NOT common.
             install_from_list "${PACKAGE_DIR}/apt-packages-minimal.list"
             ;;
-        workstation|server)
+        workstation | server)
             install_from_list "$common_list"
             install_from_list "$role_list"
             ;;
