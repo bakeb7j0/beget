@@ -872,12 +872,12 @@ Testing a machine-bootstrap project has structural challenges: CI can't spin up 
 
 ##### Story: AWS Credentials Chezmoi Template (#12)
 
-**Summary**: `private_dot_aws/credentials.tmpl` for long-lived-cred profiles.
+**Summary**: `private_dot_aws/private_credentials.tmpl` for long-lived-cred profiles (the `private_` filename prefix is what makes chezmoi materialize `~/.aws/credentials` at 0600 — see R-18).
 
 **Implementation steps**:
 1. Review Catalog Section B, identify long-lived-cred profiles
 2. Create VW `aws-<profile>` Logins (username=AccessKeyId, password=SecretAccessKey)
-3. Create `private_dot_aws/credentials.tmpl` iterating profile list
+3. Create `private_dot_aws/private_credentials.tmpl` iterating profile list
 4. Create `private_dot_aws/config` (non-secret, SSO profiles intact)
 
 **Test procedures**: E2E-04, manual `aws sts get-caller-identity`.

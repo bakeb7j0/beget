@@ -35,7 +35,7 @@ export GITLAB_TOKEN="$(secret_get analogic-gitlab-token)"
 
 # ---- Analogic AWS profile ---------------------------------------------------
 # Select the Analogic AWS profile for every `aws` invocation in this tree.
-# The profile is rendered by private_dot_aws/credentials.tmpl; direnv just
+# The profile is rendered by private_dot_aws/private_credentials.tmpl; direnv just
 # points to it. No secret materialization needed here.
 export AWS_PROFILE=analogic-dev
 
