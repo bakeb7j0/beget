@@ -1,0 +1,60 @@
+# ~/.bashrc — managed by chezmoi via beget
+#
+# Baseline interactive-shell init. Secret-dependent exports are deliberately
+# omitted here; they will live in dot_bashrc.d/executable_50-wrappers.sh
+# (introduced by a later wave). Keep this file idempotent and safe to re-source.
+
+# If not running interactively, don't do anything.
+case $- in
+    *i*) ;;
+    *) return ;;
+esac
+
+# ---- History -----------------------------------------------------------------
+HISTCONTROL=ignoreboth
+HISTSIZE=10000
+HISTFILESIZE=20000
+shopt -s histappend
+shopt -s checkwinsize
+
+# ---- Prompt ------------------------------------------------------------------
+# Enable color prompt when the terminal supports it.
+case "$TERM" in
+    xterm-color|*-256color|xterm-kitty|ghostty) color_prompt=yes ;;
+esac
+
+if [ "$color_prompt" = yes ]; then
+    PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else
+    PS1='\u@\h:\w\$ '
+fi
+unset color_prompt
+
+# ---- Aliases ----------------------------------------------------------------
+if [ -f "$HOME/.bash_aliases" ]; then
+    # shellcheck source=/dev/null
+    . "$HOME/.bash_aliases"
+fi
+
+# ---- Drop-in fragments ------------------------------------------------------
+# dot_bashrc.d/*.sh contains shared helpers (PATH, tool hooks). Sourced in
+# lexicographic order so 10-common.sh lands before 50-wrappers.sh, etc.
+if [ -d "$HOME/.bashrc.d" ]; then
+    for _f in "$HOME"/.bashrc.d/*.sh; do
+        [ -r "$_f" ] || continue
+        # shellcheck source=/dev/null
+        . "$_f"
+    done
+    unset _f
+fi
+
+# ---- Bash completion --------------------------------------------------------
+if ! shopt -oq posix; then
+    if [ -f /usr/share/bash-completion/bash_completion ]; then
+        # shellcheck source=/dev/null
+        . /usr/share/bash-completion/bash_completion
+    elif [ -f /etc/bash_completion ]; then
+        # shellcheck source=/dev/null
+        . /etc/bash_completion
+    fi
+fi

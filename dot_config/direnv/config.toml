@@ -1,0 +1,12 @@
+# ~/.config/direnv/direnv.toml — managed by chezmoi via beget
+#
+# direnv v2.28+ uses direnv.toml. Policy: no implicit whitelist — every
+# project .envrc must be allowed explicitly via `direnv allow`. This keeps
+# `secret_get` invocations from firing on arbitrary cd.
+
+[global]
+# Do not auto-load anything without explicit allow.
+warn_timeout = "5s"
+# Disable auto-approve via path whitelisting — intentional friction.
+# (direnv honors this by having no [whitelist] table; documented here so
+# future edits do not accidentally introduce one.)

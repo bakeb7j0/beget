@@ -1,0 +1,42 @@
+# ~/.config/ghostty/config — managed by chezmoi via beget
+#
+# IBM CGA palette. 16 colors mirrored from the classic DOS CGA/VGA text-mode
+# palette. Reference: https://en.wikipedia.org/wiki/Color_Graphics_Adapter
+#
+# Standard 16 (dim black/bright white at positions 0 and 15). Hex values are
+# canonical CGA — the "brown" slot (3) is rendered as yellow in text mode,
+# per the VGA text-mode convention ghostty/tmux expect.
+
+# ---- Palette ---------------------------------------------------------------
+palette = 0=#000000
+palette = 1=#AA0000
+palette = 2=#00AA00
+palette = 3=#AA5500
+palette = 4=#0000AA
+palette = 5=#AA00AA
+palette = 6=#00AAAA
+palette = 7=#AAAAAA
+palette = 8=#555555
+palette = 9=#FF5555
+palette = 10=#55FF55
+palette = 11=#FFFF55
+palette = 12=#5555FF
+palette = 13=#FF55FF
+palette = 14=#55FFFF
+palette = 15=#FFFFFF
+
+# Foreground / background match CGA text mode (bright white on black).
+foreground = #AAAAAA
+background = #000000
+cursor-color = #FFFF55
+selection-foreground = #000000
+selection-background = #AAAAAA
+
+# ---- Font ------------------------------------------------------------------
+font-family = "IBM Plex Mono"
+font-size = 11
+
+# ---- Behavior --------------------------------------------------------------
+cursor-style = block
+window-padding-x = 6
+window-padding-y = 6
