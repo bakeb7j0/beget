@@ -30,11 +30,14 @@ readonly BEGET_REPO_URL="https://github.com/bakeb7j0/beget"
 readonly BEGET_RAW_BASE="${BEGET_RAW_BASE:-}"
 readonly REQUIRED_TOOLS=(curl git bash)
 # Distro-managed prereqs — routed through apt/dnf via pkg_install.
-# pinentry-gnome3 is appended conditionally when running under GNOME.
+# The curses/TTY pinentry is resolved per-distro by
+# pkg_name_pinentry_tty() (Ubuntu: pinentry-curses, Rocky: pinentry)
+# so we build the list dynamically in install_prereqs rather than
+# baking a Debian-centric constant. pinentry-gnome3 is appended
+# conditionally when running under GNOME.
 # direnv is intentionally NOT here: it's in Ubuntu's apt repos but not
 # in Rocky 9 (base or EPEL), so the upstream installer is the only
 # uniform path across both distros.
-readonly DISTRO_PREREQS=(pinentry-curses git curl)
 # Upstream prereqs — none of chezmoi, direnv, or rbw is uniformly
 # available in Ubuntu/Rocky default repos, so each has a dedicated
 # installer in lib/platform.sh (install_chezmoi, install_direnv,
@@ -171,7 +174,11 @@ preflight() {
 # ---- Prereq install ----------------------------------------------------------
 
 install_prereqs() {
-    local pkgs=("${DISTRO_PREREQS[@]}")
+    # Build the distro-prereq list now that OS_ID is known (preflight
+    # has already sourced /etc/os-release). pkg_name_pinentry_tty()
+    # lives in lib/platform.sh and resolves the curses-pinentry name
+    # per-distro.
+    local pkgs=("$(pkg_name_pinentry_tty)" git curl)
 
     # pinentry-gnome3 is only meaningful on GNOME desktops.
     if is_gnome; then

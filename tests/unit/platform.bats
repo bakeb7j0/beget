@@ -92,6 +92,46 @@ EOF
     [[ "$output" == *"unsupported OS_ID: arch"* ]]
 }
 
+@test "pkg_name_pinentry_tty: Ubuntu resolves to pinentry-curses" {
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+    run pkg_name_pinentry_tty
+    [ "$status" -eq 0 ]
+    [ "$output" = "pinentry-curses" ]
+}
+
+@test "pkg_name_pinentry_tty: Debian resolves to pinentry-curses" {
+    make_os_release "debian" "12"
+    source_os_release
+    run pkg_name_pinentry_tty
+    [ "$status" -eq 0 ]
+    [ "$output" = "pinentry-curses" ]
+}
+
+@test "pkg_name_pinentry_tty: Rocky resolves to plain pinentry" {
+    make_os_release "rocky" "9.3"
+    source_os_release
+    run pkg_name_pinentry_tty
+    [ "$status" -eq 0 ]
+    [ "$output" = "pinentry" ]
+}
+
+@test "pkg_name_pinentry_tty: Fedora resolves to plain pinentry" {
+    make_os_release "fedora" "39"
+    source_os_release
+    run pkg_name_pinentry_tty
+    [ "$status" -eq 0 ]
+    [ "$output" = "pinentry" ]
+}
+
+@test "pkg_name_pinentry_tty: unsupported OS aborts" {
+    make_os_release "arch" "rolling"
+    source_os_release
+    run pkg_name_pinentry_tty
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"unsupported OS_ID: arch"* ]]
+}
+
 @test "die_if_unsupported_os: Ubuntu 24.04 passes" {
     make_os_release "ubuntu" "24.04"
     run die_if_unsupported_os

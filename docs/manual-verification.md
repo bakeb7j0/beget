@@ -38,11 +38,14 @@ new issue labeled `type::bug`.
 ### MV-01 — First-time bootstrap on a fresh VM
 
 **Traces**: R-01, R-16. **Flow**: §4.2. **Runbook**: §1.
-**Automated coverage**: [E2E-09](../tests/e2e/e2e-09-oneliner-ubuntu.sh) exercises
-the same `curl … | bash` path on Ubuntu 24.04 end-to-end against live apt (serves
-install.sh over a loopback HTTP server to sidestep main-branch dependence). MV-01
-remains the canonical check for the desktop/GUI and real-Vaultwarden legs that
-E2E-09 deliberately skips (`--skip-secrets`, headless).
+**Automated coverage**: [E2E-09](../tests/e2e/e2e-09-oneliner-ubuntu.sh) (Ubuntu
+24.04) and [E2E-10](../tests/e2e/e2e-10-oneliner-rocky.sh) (Rocky 9) exercise the
+same `curl … | bash` path end-to-end against live apt/dnf (serve install.sh over a
+loopback HTTP server to sidestep main-branch dependence). E2E-10 also validates
+the Rocky-vs-Debian `pinentry` naming divergence handled by
+`lib/platform.sh:pkg_name_pinentry_tty`. MV-01 remains the canonical check for
+the desktop/GUI and real-Vaultwarden legs that both E2E tests deliberately skip
+(`--skip-secrets`, headless).
 
 **Preconditions**
 - Fresh VM (Ubuntu 24.04 or Rocky 9) with network and a non-root user.

@@ -89,6 +89,22 @@ pkg_cache_refresh() {
     _pkg_cache_refreshed=1
 }
 
+# Resolve the distro-appropriate package name for the curses/TTY
+# pinentry. Debian/Ubuntu ship it as `pinentry-curses`; RHEL-family
+# dnf repos ship it as plain `pinentry` (no `-curses` suffix because
+# that's the only pinentry variant in the base repos). Callers emit
+# the returned name straight into pkg_install.
+pkg_name_pinentry_tty() {
+    if [[ -z "${OS_ID:-}" ]]; then
+        source_os_release
+    fi
+    case "$OS_ID" in
+        ubuntu | debian) printf 'pinentry-curses' ;;
+        rocky | rhel | centos | almalinux | fedora) printf 'pinentry' ;;
+        *) die "pkg_name_pinentry_tty: unsupported OS_ID: $OS_ID" ;;
+    esac
+}
+
 # Install one or more packages using the native package manager.
 # Dispatches based on OS_ID (populated by source_os_release).
 pkg_install() {

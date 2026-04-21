@@ -17,6 +17,7 @@ RUN dnf install --allowerasing -yq \
         curl \
         git \
         jq \
+        python3 \
         sudo \
         tzdata
 
