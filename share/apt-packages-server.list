@@ -1,0 +1,20 @@
+# share/apt-packages-server.list — server-focused packages for the server role.
+#
+# Installed IN ADDITION TO the common list on server-tagged machines.
+# One package per line; blank lines and `#` comments ignored.
+
+# --- daemon management / observability ---
+htop
+iftop
+iotop
+lsof
+sysstat
+
+# --- networking services ---
+chrony
+nftables
+openssh-server
+
+# --- filesystem / storage ---
+parted
+smartmontools

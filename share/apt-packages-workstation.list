@@ -1,0 +1,24 @@
+# share/apt-packages-workstation.list — GUI/desktop packages for workstation role.
+#
+# Installed IN ADDITION TO the common list on workstation-tagged machines.
+# One package per line; blank lines and `#` comments ignored.
+
+# --- browsers ---
+chromium-browser
+firefox
+
+# --- editors / IDEs ---
+neovim
+vim-gtk3
+
+# --- messaging / collaboration ---
+thunderbird
+
+# --- media ---
+mpv
+vlc
+
+# --- fonts ---
+fonts-firacode
+fonts-noto
+fonts-noto-color-emoji
