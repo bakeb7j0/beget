@@ -9,7 +9,9 @@ FROM rockylinux:9
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
-RUN dnf install -yq \
+# --allowerasing lets dnf swap the stock curl-minimal for the full curl
+# package (they both provide /usr/bin/curl but conflict on install).
+RUN dnf install --allowerasing -yq \
         bash \
         ca-certificates \
         curl \

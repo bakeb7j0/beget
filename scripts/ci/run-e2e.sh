@@ -39,9 +39,19 @@ if [[ ${#scripts[@]} -eq 0 ]]; then
     exit 0
 fi
 
+# Distro filter: a script whose filename contains `-ubuntu-` runs only on
+# ubuntu* images; `-rocky-` runs only on rocky* images; everything else
+# runs on both. The convention is part of the filename so filtering stays
+# obvious at the call site.
+distro_family="${distro%%[0-9]*}"
+
 fail=0
 for s in "${scripts[@]}"; do
     name="$(basename "$s" .sh)"
+    case "$name" in
+        *-ubuntu-*) [[ "$distro_family" == "ubuntu" ]] || { echo "--- $name skipped on $distro ---"; continue; } ;;
+        *-rocky-*)  [[ "$distro_family" == "rocky"  ]] || { echo "--- $name skipped on $distro ---"; continue; } ;;
+    esac
     printf '\n=== %s on %s ===\n' "$name" "$distro"
     # No --privileged: the e2e scripts under tests/e2e/ don't touch systemd or
     # devices. If a future test needs a specific capability, add it narrowly
