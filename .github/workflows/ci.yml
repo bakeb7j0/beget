@@ -1,0 +1,85 @@
+name: ci
+
+# Triggers: every pull_request to any branch + every push to main.
+# Keep jobs discrete; each job's output should be ≤10 minutes on the default
+# hosted runners (acceptance criterion for Story #25). Procedural logic lives
+# in scripts/ci/ — YAML stays declarative (project rule, see CLAUDE.md).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/ci/install-lint-deps.sh
+      - run: ./scripts/ci/run-lint.sh
+
+  template-render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/chezmoi
+          key: chezmoi-${{ runner.os }}
+      - run: ./scripts/ci/install-chezmoi.sh
+      - run: ./scripts/ci/run-template-render.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: template-render-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
+
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/install-unit-deps.sh
+      - run: ./scripts/ci/run-unit.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
+
+  e2e-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-e2e.sh ubuntu24
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-ubuntu-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
+
+  e2e-rocky:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-e2e.sh rocky9
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-rocky-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
