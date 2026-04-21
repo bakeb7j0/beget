@@ -52,8 +52,8 @@ untraced rows.
 | R-14 | `secret_get VAR` prints value to stdout without exporting | Secrets/Env | IT-05 (`tests/unit/secret.bats`) | §4.6 | |
 | R-15 | Default rbw item derived by lowercasing + underscores→dashes | Secrets/Env | IT-06 (`tests/unit/secret.bats`) | — | e.g. `GITHUB_PAT` → `github-pat` |
 | R-16 | First-use wrappers materialize `GITHUB_PAT`/`GITLAB_TOKEN`/`BAO_TOKEN` before dispatch | Secrets/Env | `tests/unit/wrappers.bats`, MV-01 | §4.2 | |
-| R-17 | SSH private keys in Catalog A → `~/.ssh/` 0600 via `chezmoi apply` | Secrets/Files | IT-03, E2E-04, MV-08 | §4.2 | Catalog A: `docs/catalog-a-ssh-identities.md` |
-| R-18 | `~/.aws/credentials` rendered from rbw items `aws-<profile>` with 0600 | Secrets/Files | IT-03, E2E-04, manual `aws sts get-caller-identity` | §4.2 | Catalog B: `docs/catalog-b-aws-profiles.md` |
+| R-17 | SSH private keys in Catalog A → `~/.ssh/` 0600 via `chezmoi apply` | Secrets/Files | IT-03, E2E-04, E2E-11, MV-08 | §4.2 | Catalog A: `docs/catalog-a-ssh-identities.md`; E2E-11 asserts 0600 mode and rbw-sourced content for every catalog-A identity after a real `chezmoi apply` into a scratch HOME |
+| R-18 | `~/.aws/credentials` rendered from rbw items `aws-<profile>` with 0600 | Secrets/Files | IT-03, E2E-04, E2E-11, manual `aws sts get-caller-identity` | §4.2 | Catalog B: `docs/catalog-b-aws-profiles.md`; E2E-11 asserts 0600 mode, every `[profile]` section present, and AKIA marker count ≥ profile count after a real `chezmoi apply` |
 | R-19 | VW update → `chezmoi apply` re-materializes dependent files | Secrets/Files | E2E-06, MV-02 | §4.4 | Template render output is content-derived |
 | R-20 | On desktops with Secret Service, rbw uses `pinentry-gnome3` | rbw Lifecycle | MV-08 | §4.2 | Detected via `DBUS_SESSION_BUS_ADDRESS` + `XDG_CURRENT_DESKTOP` |
 | R-21 | On headless sessions, rbw falls back to `pinentry-curses` | rbw Lifecycle | MV (headless-malory procedure, part of MV-08 addendum) | §4.2 | |
