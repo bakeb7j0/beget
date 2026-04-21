@@ -82,13 +82,19 @@ trap cleanup EXIT
 run_test() {
     # The Ubuntu24 image pre-installs chezmoi at /usr/local/bin/chezmoi
     # so image build stays fast. E2E-09 MUST exercise install.sh's
-    # real install_chezmoi path, so scrub it first. Requires sudo
-    # (provided by the Dockerfile's NOPASSWD rule for the beget user).
-    if command -v sudo >/dev/null 2>&1; then
-        sudo rm -f /usr/local/bin/chezmoi
-    else
-        rm -f /usr/local/bin/chezmoi
-    fi
+    # real install_chezmoi path, which short-circuits on
+    # `command -v chezmoi`. Scrubbing the physical binary would
+    # require root, and the CI runner uses `docker run --user
+    # $(id -u):$(id -g)` which maps to a host UID that isn't in the
+    # container's /etc/passwd -- so sudo fails with "you do not exist
+    # in the passwd database". Instead, drop /usr/local/bin from PATH:
+    # curl/git/bash all live in /usr/bin, so install.sh's prereqs are
+    # unaffected; the pre-baked chezmoi becomes invisible to
+    # `command -v` and install_chezmoi runs its real install flow.
+    # install_chezmoi installs to $HOME/.local/bin, which is added to
+    # PATH below so the post-conditions can see it.
+    export PATH="${HOME}/.local/bin:/usr/bin:/bin"
+    hash -r
     if command -v chezmoi >/dev/null 2>&1; then
         _assert_fail "chezmoi still on PATH after scrub: $(command -v chezmoi)"
         return 1

@@ -57,11 +57,35 @@ for s in "${scripts[@]}"; do
     # No --privileged: the e2e scripts under tests/e2e/ don't touch systemd or
     # devices. If a future test needs a specific capability, add it narrowly
     # (--cap-add=...) with justification rather than re-enabling --privileged.
-    # --user matches host uid/gid so JUnit writes to the bind-mounted
-    # tests/results/ succeed on CI runners (workspace uid != container uid).
+    #
+    # Two --user modes:
+    #   - Dry-run / source-only tests (e2e-01..e2e-08): run as host uid/gid so
+    #     JUnit writes to the bind-mounted tests/results/ without extra perms
+    #     fiddling. These tests never invoke sudo/apt.
+    #   - Real-install tests (e2e-09+, whose filenames contain `-oneliner-`
+    #     or `-chezmoi-apply-`): MUST run as the Dockerfile's beget user
+    #     (uid 1000) because install.sh calls `sudo apt-get install` and
+    #     sudo requires a /etc/passwd entry matching the runtime uid. The
+    #     host uid on CI runners typically isn't 1000 and isn't in passwd,
+    #     so sudo fails with "you do not exist in the passwd database".
+    #     tests/results/ is made world-writable beforehand so the uid-1000
+    #     write from emit_junit succeeds on the bind mount.
     # The non-root path (R-03) relies on euid != 0, which any non-zero uid
     # satisfies; e2e-08 stubs current_euid() rather than using the real uid.
-    if ! docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" -w /src "$image" bash "$s"; then
+    case "$name" in
+        *-oneliner-* | *-chezmoi-apply-*)
+            chmod 777 tests/results
+            # -e HOME: docker --user switches uid but doesn't source the
+            # user's profile, so $HOME would otherwise default to / and
+            # install.sh's $HOME/.local/bin writes would land in root's
+            # filesystem.
+            docker_args=(--user 1000:1000 -e HOME=/home/beget)
+            ;;
+        *)
+            docker_args=(--user "$(id -u):$(id -g)")
+            ;;
+    esac
+    if ! docker run --rm "${docker_args[@]}" -v "$PWD:/src" -w /src "$image" bash "$s"; then
         fail=1
     fi
 done
