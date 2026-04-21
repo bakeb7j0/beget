@@ -1,0 +1,27 @@
+[Unit]
+# Prometheus node_exporter — exposes host-level metrics (CPU, memory, disk,
+# network, filesystem) on :9100 for scraping by the homelab Prometheus.
+# Installed only on workstation-tagged hosts by
+# run_onchange_before_41-systemd-system.sh. The node_exporter binary itself
+# is installed by the non-apt tooling wave (#22); this unit expects it at
+# /usr/local/bin/node_exporter.
+Description=Prometheus node exporter
+Documentation=https://github.com/prometheus/node_exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=node_exporter
+Group=node_exporter
+ExecStart=/usr/local/bin/node_exporter --web.listen-address=127.0.0.1:9100
+Restart=on-failure
+RestartSec=5s
+# Harden: no new privs, read-only root, no home access.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

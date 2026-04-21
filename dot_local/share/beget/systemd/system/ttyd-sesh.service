@@ -1,0 +1,28 @@
+[Unit]
+# ttyd-sesh — ttyd bound to the `sesh` terminal session manager, exposing a
+# web terminal on :7681 for in-house diagnostic access from the homelab
+# internal network. Workstation-tagged (homelab hosts only). The ttyd
+# binary is installed by the non-apt tooling wave; this unit expects the
+# binary at /usr/local/bin/ttyd.
+Description=ttyd web terminal bound to sesh session manager
+Documentation=https://github.com/tsl0922/ttyd
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ttyd
+Group=ttyd
+# -W disables writes from the browser by default, -t disableLeaveAlert=true
+# avoids the onbeforeunload nag, -p sets the listen port, sesh spawns a
+# session-aware login shell.
+ExecStart=/usr/local/bin/ttyd -W -p 7681 -t disableLeaveAlert=true sesh connect
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
