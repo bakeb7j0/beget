@@ -1,0 +1,32 @@
+# ~/.bash_aliases — managed by chezmoi via beget
+#
+# Personal shell aliases. Sourced by ~/.bashrc when present.
+
+# ls family — color output on both GNU and BSD ls (GNU is the default on both
+# supported platforms).
+if command -v dircolors >/dev/null 2>&1; then
+    alias ls='ls --color=auto'
+fi
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+
+# Grep with color when the target is a terminal (GNU grep's default).
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# Editor convenience. vi invokes vim when present; falls through otherwise.
+if command -v vim >/dev/null 2>&1; then
+    alias vi='vim'
+fi
+
+# Quality-of-life.
+alias ..='cd ..'
+alias ...='cd ../..'
+alias h='history'
+
+# Safe-by-default destructive commands.
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'

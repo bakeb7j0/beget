@@ -1,0 +1,18 @@
+# ~/.inputrc — managed by chezmoi via beget
+#
+# Readline settings. Keep minimal and POSIX-friendly so that vi-mode lovers
+# and emacs-mode defaults both remain sane.
+
+# Respect the system inputrc when present.
+$include /etc/inputrc
+
+# Case-insensitive completion and visual indicators.
+set completion-ignore-case On
+set show-all-if-ambiguous On
+set visible-stats On
+set colored-stats On
+set mark-symlinked-directories On
+
+# History search via up/down arrows against the current prefix.
+"\e[A": history-search-backward
+"\e[B": history-search-forward
