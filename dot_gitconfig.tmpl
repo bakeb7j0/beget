@@ -1,0 +1,48 @@
+; ~/.gitconfig — managed by chezmoi via beget
+;
+; Default (personal) git identity. Per-context overrides are applied via
+; `includeIf` matchers below; see README / Dev Spec §5.4 for the full context
+; story. Credentials are NEVER written here — all auth goes through
+; credential helpers or SSH keys materialized by a later wave.
+
+[user]
+    name  = Brian Baker
+    email = brian@waveeng.com
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = true
+
+[push]
+    autoSetupRemote = true
+    default = simple
+
+[rebase]
+    autoStash = true
+
+[fetch]
+    prune = true
+
+[core]
+    editor = vim
+    autocrlf = input
+    pager = less -FRX
+
+[color]
+    ui = auto
+
+[filter "lfs"]
+    clean    = git-lfs clean -- %f
+    smudge   = git-lfs smudge -- %f
+    process  = git-lfs filter-process
+    required = true
+
+; ---- Per-context identity (R-24, R-25) --------------------------------------
+; Requires git >= 2.36 for the `hasconfig:remote.*.url` matcher. When a clone
+; has a remote whose URL starts with git@gitlab.com:analogicdev/, the Analogic
+; override file is included and overrides user.email.
+
+[includeIf "hasconfig:remote.*.url:git@gitlab.com:analogicdev/**"]
+    path = ~/.gitconfig-analogic
