@@ -36,8 +36,8 @@ untraced rows.
 
 | Req ID | Summary | Category | Verifying Test IDs | Section 4 Flow | Notes |
 |---|---|---|---|---|---|
-| R-01 | `curl ... \| bash` bootstrap installs prereqs (chezmoi, rbw, direnv, pinentries, git, curl) | Bootstrap | E2E-01, E2E-09, IT-08, MV-01, `tests/unit/direnv.bats` (BASE_PREREQS) | §4.2 | E2E-09 exercises the real `curl \| bash` path end-to-end against live apt via loopback HTTP server |
-| R-02 | Abort when OS is not Ubuntu 24.04+ or RHEL 9+/family | Bootstrap | IT-01, `tests/unit/os-detection.bats` (`die_if_unsupported_os`) | §4.2 | 5 mocked-os-release unit tests cover Rocky 10, Ubuntu 26, Fedora, CentOS, AlmaLinux |
+| R-01 | `curl ... \| bash` bootstrap installs prereqs (chezmoi, rbw, direnv, pinentries, git, curl) | Bootstrap | E2E-01, E2E-09, E2E-10, IT-08, MV-01, `tests/unit/direnv.bats` (BASE_PREREQS) | §4.2 | E2E-09 (Ubuntu) and E2E-10 (Rocky) exercise the real `curl \| bash` path end-to-end against live apt/dnf via loopback HTTP server; `tests/unit/platform.bats` (`pkg_name_pinentry_tty`) covers the Rocky vs Debian pinentry-name divergence |
+| R-02 | Abort when OS is not Ubuntu 24.04+ or RHEL 9+/family | Bootstrap | IT-01, `tests/unit/os-detection.bats` (`die_if_unsupported_os`), E2E-09, E2E-10 | §4.2 | 5 mocked-os-release unit tests cover Rocky 10, Ubuntu 26, Fedora, CentOS, AlmaLinux; E2E-09/10 confirm the bootstrap does NOT abort on the two supported families |
 | R-03 | Abort if invoked as root without `--allow-root` | Bootstrap | E2E-08, `tests/unit/install.bats` (preflight root tests) | §4.2 | Override path also covered (`--allow-root` accepted) |
 | R-04 | `--dry-run` prints actions without executing | Bootstrap | `tests/unit/install.bats` (parse_flags sets DRY_RUN), IT-08 | §4.2 | `chezmoi apply --dry-run` wired via `make apply-dry` |
 | R-05 | `--role=<workstation\|server\|minimal>` passed to `chezmoi init --data` | Bootstrap | `tests/unit/install.bats` (parse_flags sets ROLE), E2E-01 (minimal), E2E-02 (workstation), E2E-03 (workstation/Rocky) | §4.2 | |
@@ -89,7 +89,7 @@ untraced rows.
 
 - Unit tests (bats): cover R-02, R-03, R-04, R-05, R-06, R-13, R-14, R-15, R-16, R-24, R-25, R-26, R-27, R-28, R-29, R-31, R-32, R-33, R-34, R-35, R-36, R-37, R-38, R-39, R-40, R-41, R-43
 - Integration tests: cover R-01, R-07, R-09, R-10, R-11, R-12, R-17, R-18, R-31, R-32, R-33, R-34, R-35, R-36, R-37, R-38, R-40, R-41, R-42, R-44
-- E2E tests: cover R-01, R-03, R-05, R-06, R-07, R-08, R-11, R-12, R-17, R-18, R-19, R-23, R-30, R-33, R-38, R-42
+- E2E tests: cover R-01, R-02, R-03, R-05, R-06, R-07, R-08, R-11, R-12, R-17, R-18, R-19, R-23, R-30, R-33, R-38, R-42
 - Manual verifications: cover R-01, R-13, R-16, R-19, R-20, R-21, R-22, R-24, R-25, R-27, R-29, R-30, R-36, R-39, R-43
 - Section 4 flows: every theme with user-visible behavior maps to §4.2–§4.7
 - Structural inspection only: R-45 (README contents) and R-46 (CHANGELOG presence) — reviewed at /dod
