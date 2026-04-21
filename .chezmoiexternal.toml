@@ -1,0 +1,50 @@
+# .chezmoiexternal.toml — upstream project integrations.
+#
+# chezmoi's `externals` feature clones arbitrary git repos into the
+# destination tree on `chezmoi apply` and keeps them fresh on a
+# configurable cadence. The convention we use:
+#
+#   target   = "${HOME}/.local/share/<name>"
+#   type     = "git-repo"
+#   refreshPeriod = "168h"   # 1 week; balances freshness with noise
+#
+# Each project ships its own install.sh (or equivalent post-clone
+# action). Running those installers is the job of
+# run_onchange_after_90-upstream-install.sh which iterates the same
+# list.
+#
+# Project list (5 total, per Dev Spec §5.8 / R-36):
+#   - claudecode-workflow           (GitHub: bakeb7j0/claudecode-workflow)
+#   - tuneviz                       (GitHub: bakeb7j0/tuneviz)
+#   - gitlab-settings-automation    (GitHub: bakeb7j0/gitlab-settings-automation)
+#   - release-mgr                   (GitLab: analogicdev/internal/tools/release-mgr)
+#   - claude-code-switch            (GitLab: analogicdev/internal/tools/claude-code-switch)
+#
+# GitLab repos use https URLs so chezmoi can clone without SSH config;
+# any auth needed for private repos comes from the user's git credential
+# helper, NOT from beget.
+
+[".local/share/claudecode-workflow"]
+    type = "git-repo"
+    url = "https://github.com/bakeb7j0/claudecode-workflow.git"
+    refreshPeriod = "168h"
+
+[".local/share/tuneviz"]
+    type = "git-repo"
+    url = "https://github.com/bakeb7j0/tuneviz.git"
+    refreshPeriod = "168h"
+
+[".local/share/gitlab-settings-automation"]
+    type = "git-repo"
+    url = "https://github.com/bakeb7j0/gitlab-settings-automation.git"
+    refreshPeriod = "168h"
+
+[".local/share/release-mgr"]
+    type = "git-repo"
+    url = "https://gitlab.com/analogicdev/internal/tools/release-mgr.git"
+    refreshPeriod = "168h"
+
+[".local/share/claude-code-switch"]
+    type = "git-repo"
+    url = "https://gitlab.com/analogicdev/internal/tools/claude-code-switch.git"
+    refreshPeriod = "168h"
