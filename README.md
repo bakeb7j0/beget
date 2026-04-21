@@ -56,6 +56,9 @@ Linux only. No macOS, Windows, or BSD support.
 - [Verification Traceability Matrix](docs/beget-vrtm.md) — every
   requirement traced to its verifying test, flow, or inspection artifact.
 - [Runbook](docs/runbook.md) — day-to-day operational procedures.
+- [Manual Verification Procedures](docs/manual-verification.md) — ten
+  paste-into-an-issue procedures (MV-01..MV-10) for flows that cannot be
+  automated.
 - [Deployment Verification](docs/deployment-verification.md) — post-deploy
   smoke checklist.
 

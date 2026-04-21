@@ -6,6 +6,10 @@ wrapped in `<angle-brackets>`.
 
 If a command fails, check the matching entry in [Troubleshooting](#troubleshooting) before retrying.
 
+For acceptance verification — especially on a fresh VM or after a major
+change — pair each runbook section with the corresponding procedure in
+[Manual Verification Procedures](manual-verification.md) (MV-01..MV-10).
+
 ---
 
 ## Table of Contents
