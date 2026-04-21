@@ -195,11 +195,15 @@ install_prereqs() {
 # ---- Chezmoi init + apply ----------------------------------------------------
 
 chezmoi_bootstrap() {
+    # chezmoi init takes one positional arg (the repo URL). Template data
+    # is wired via a chezmoi config file or promptString flags — neither
+    # is in play today, so role is operator-visible in the log only and
+    # not plumbed into chezmoi's template engine.
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would: chezmoi init ${BEGET_REPO_URL} --data role=${ROLE}"
+        log "[dry-run] would: chezmoi init ${BEGET_REPO_URL} (role=${ROLE})"
     else
-        log "chezmoi init ${BEGET_REPO_URL} --data role=${ROLE}"
-        chezmoi init "$BEGET_REPO_URL" --data "role=${ROLE}"
+        log "chezmoi init ${BEGET_REPO_URL} (role=${ROLE})"
+        chezmoi init "$BEGET_REPO_URL"
     fi
 }
 
