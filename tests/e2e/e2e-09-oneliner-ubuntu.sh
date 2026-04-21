@@ -140,9 +140,15 @@ run_test() {
 
     # The real bootstrap. Piped through bash so locate_lib_platform
     # hits the curl-download fallback (BASH_SOURCE can't resolve to a
-    # file on disk in the piped case). --skip-secrets + --role=minimal
-    # avoids the rbw login prompt and keeps the surface area to the
-    # core prereq-install + chezmoi-init path.
+    # file on disk in the piped case).
+    #
+    # Flag rationale:
+    #   --skip-secrets avoids the rbw login prompt.
+    #   --role=minimal documents the intended role (chezmoi template
+    #     data wiring is a separate piece of work; see install.sh).
+    #   --skip-apply narrows the surface to the prereq-install +
+    #     chezmoi-init path. The dotfile render pass lives behind its
+    #     own E2E (#89); R-01 is just "the bootstrap works".
     #
     # `export` matters: `VAR=val cmd1 | cmd2` scopes the assignment to
     # cmd1 only, so the piped bash subprocess would see an empty
@@ -151,7 +157,7 @@ run_test() {
     INSTALL_LOG="$(mktemp)"
     export BEGET_RAW_BASE="$raw_base"
     if ! curl -fsSL "${raw_base}/install.sh" |
-        bash -s -- --skip-secrets --role=minimal >"$INSTALL_LOG" 2>&1; then
+        bash -s -- --skip-secrets --skip-apply --role=minimal >"$INSTALL_LOG" 2>&1; then
         echo "--- install.sh output ---" >&2
         cat "$INSTALL_LOG" >&2
         _assert_fail "install.sh exited non-zero"
