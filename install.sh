@@ -19,8 +19,17 @@ set -euo pipefail
 
 readonly BEGET_REPO_URL="https://github.com/bakeb7j0/beget"
 readonly REQUIRED_TOOLS=(curl git bash)
-# Always-install prereqs. pinentry-gnome3 added conditionally below.
-readonly BASE_PREREQS=(chezmoi rbw direnv pinentry-curses git curl)
+# Distro-managed prereqs — routed through apt/dnf via pkg_install.
+# pinentry-gnome3 is appended conditionally when running under GNOME.
+# direnv is intentionally NOT here: it's in Ubuntu's apt repos but not
+# in Rocky 9 (base or EPEL), so the upstream installer is the only
+# uniform path across both distros.
+readonly DISTRO_PREREQS=(pinentry-curses git curl)
+# Upstream prereqs — none of chezmoi, direnv, or rbw is uniformly
+# available in Ubuntu/Rocky default repos, so each has a dedicated
+# installer in lib/platform.sh (install_chezmoi, install_direnv,
+# install_rbw).
+readonly UPSTREAM_PREREQS=(chezmoi direnv rbw)
 
 # ---- Helpers -----------------------------------------------------------------
 
@@ -142,7 +151,7 @@ preflight() {
 # ---- Prereq install ----------------------------------------------------------
 
 install_prereqs() {
-    local pkgs=("${BASE_PREREQS[@]}")
+    local pkgs=("${DISTRO_PREREQS[@]}")
 
     # pinentry-gnome3 is only meaningful on GNOME desktops.
     if is_gnome; then
@@ -150,12 +159,21 @@ install_prereqs() {
     fi
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
+        log "[dry-run] would ensure EPEL on RHEL-family"
         log "[dry-run] would pkg_install: ${pkgs[*]}"
-        return 0
+        log "[dry-run] would install upstream prereqs: ${UPSTREAM_PREREQS[*]}"
+    else
+        # direnv (and some other userspace tooling) live in EPEL on
+        # Rocky/RHEL, so EPEL has to be enabled before pkg_install
+        # runs. Noop on Debian-family.
+        pkg_ensure_epel || die "EPEL enablement failed"
+        log "installing distro prereqs: ${pkgs[*]}"
+        pkg_install "${pkgs[@]}" || die "distro prereq install failed"
     fi
 
-    log "installing prereqs: ${pkgs[*]}"
-    pkg_install "${pkgs[@]}"
+    install_chezmoi || die "chezmoi install failed"
+    install_direnv || die "direnv install failed"
+    install_rbw || die "rbw install failed"
 }
 
 # ---- Chezmoi init + apply ----------------------------------------------------

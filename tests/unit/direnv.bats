@@ -78,8 +78,11 @@ EOF
 
 # ---- install.sh prereq list -------------------------------------------------
 
-@test "install.sh BASE_PREREQS list contains direnv (R-01)" {
-    grep -qE '^readonly BASE_PREREQS=\(.*\bdirenv\b.*\)' "$INSTALL_SH"
+@test "install.sh UPSTREAM_PREREQS list contains direnv (R-01)" {
+    # direnv moved from DISTRO_PREREQS to UPSTREAM_PREREQS because
+    # Rocky 9 ships it in neither base nor EPEL repos, so the upstream
+    # direnv.net installer is the only uniform cross-distro path.
+    grep -qE '^readonly UPSTREAM_PREREQS=\(.*\bdirenv\b.*\)' "$INSTALL_SH"
 }
 
 # ---- .envrc example quality -------------------------------------------------

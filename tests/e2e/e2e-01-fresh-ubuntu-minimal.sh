@@ -28,11 +28,16 @@ run_test() {
     assert_eq "$OS_ID" "ubuntu" "os_id" || return 1
     assert_eq "$OS_MAJOR_VERSION" "24" "os_major" || return 1
 
-    # install_prereqs in dry-run mode must emit a pkg list but not
-    # actually invoke apt.
+    # install_prereqs in dry-run mode must emit both a distro pkg list
+    # and an upstream-installer marker but not actually invoke apt or
+    # cargo. The two-phase split is what fixes R-01 (chezmoi/rbw were
+    # never in the distro repos).
     local out
     out="$(install_prereqs 2>&1)" || return 1
-    assert_match "$out" "would pkg_install" "install_prereqs dry-run marker" || return 1
+    assert_match "$out" "would pkg_install" "distro dry-run marker" || return 1
+    assert_match "$out" "upstream prereqs" "upstream dry-run marker" || return 1
+    assert_match "$out" "chezmoi" "chezmoi mentioned" || return 1
+    assert_match "$out" "rbw" "rbw mentioned" || return 1
 }
 
 start=$(date +%s)
