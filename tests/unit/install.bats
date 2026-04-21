@@ -6,12 +6,13 @@ setup() {
     INSTALL_SH="$REPO_ROOT/install.sh"
 }
 
-@test "install.sh: --help prints usage and lists all 5 flags" {
+@test "install.sh: --help prints usage and lists all flags" {
     run bash "$INSTALL_SH" --help
     [ "$status" -eq 0 ]
     [[ "$output" == *"--dry-run"* ]]
     [[ "$output" == *"--role="* ]]
     [[ "$output" == *"--skip-secrets"* ]]
+    [[ "$output" == *"--skip-apply"* ]]
     [[ "$output" == *"--allow-root"* ]]
     [[ "$output" == *"--help"* ]]
 }
@@ -43,12 +44,13 @@ source_install() {
     source "$INSTALL_SH"
 }
 
-@test "install.sh: parse_flags sets DRY_RUN/ROLE/SKIP_SECRETS/ALLOW_ROOT" {
+@test "install.sh: parse_flags sets DRY_RUN/ROLE/SKIP_SECRETS/SKIP_APPLY/ALLOW_ROOT" {
     source_install
-    parse_flags --dry-run --role=minimal --skip-secrets --allow-root
+    parse_flags --dry-run --role=minimal --skip-secrets --skip-apply --allow-root
     [ "$DRY_RUN" -eq 1 ]
     [ "$ROLE" = "minimal" ]
     [ "$SKIP_SECRETS" -eq 1 ]
+    [ "$SKIP_APPLY" -eq 1 ]
     [ "$ALLOW_ROOT" -eq 1 ]
 }
 

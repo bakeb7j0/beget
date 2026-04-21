@@ -38,6 +38,11 @@ new issue labeled `type::bug`.
 ### MV-01 — First-time bootstrap on a fresh VM
 
 **Traces**: R-01, R-16. **Flow**: §4.2. **Runbook**: §1.
+**Automated coverage**: [E2E-09](../tests/e2e/e2e-09-oneliner-ubuntu.sh) exercises
+the same `curl … | bash` path on Ubuntu 24.04 end-to-end against live apt (serves
+install.sh over a loopback HTTP server to sidestep main-branch dependence). MV-01
+remains the canonical check for the desktop/GUI and real-Vaultwarden legs that
+E2E-09 deliberately skips (`--skip-secrets`, headless).
 
 **Preconditions**
 - Fresh VM (Ubuntu 24.04 or Rocky 9) with network and a non-root user.
