@@ -1,0 +1,34 @@
+# ~/.aws/config — managed by chezmoi via beget
+#
+# Non-secret AWS CLI configuration. Per-profile region defaults live here;
+# long-lived credentials live in ~/.aws/credentials (rendered from
+# Vaultwarden — see private_dot_aws/credentials.tmpl).
+#
+# Catalog B lists all long-lived profiles at us-east-1. SSO / session
+# profiles (if any) get added below with `sso_session` references — they
+# are NOT materialized from Vaultwarden.
+
+[default]
+region = us-east-1
+output = json
+
+[profile aws-admin]
+region = us-east-1
+
+[profile bedrock]
+region = us-east-1
+
+[profile bedrock-sync]
+region = us-east-1
+
+[profile dev-deploy-bot]
+region = us-east-1
+
+[profile prod-deploy-bot]
+region = us-east-1
+
+[profile s3-mgmt-bot]
+region = us-east-1
+
+[profile test-deploy-bot]
+region = us-east-1
