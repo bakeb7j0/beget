@@ -193,6 +193,307 @@ EOF
     [ ! -f "$APT_SOURCES_DIR/example.list" ]
 }
 
+@test "pkg_ensure_epel: noop on Ubuntu" {
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+    # Fail loudly if any package-manager command is called.
+    rpm() { printf 'FAIL: rpm called\n'; return 99; }
+    sudo() { printf 'FAIL: sudo called\n'; return 99; }
+    export -f rpm sudo
+    run pkg_ensure_epel
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "pkg_ensure_epel: skips epel install but still enables CRB when present" {
+    make_os_release "rocky" "9.3"
+    source_os_release
+    rpm() { return 0; }   # simulate epel-release already installed
+    # Track what sudo gets called with; don't fail.
+    local calls="$BATS_TEST_TMPDIR/sudo-calls"
+    : >"$calls"
+    sudo() { printf '%s\n' "$*" >>"$calls"; return 0; }
+    export -f rpm sudo
+    run pkg_ensure_epel
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"already installed"* ]]
+    # epel-release install must NOT have been invoked; CRB enablement MUST have.
+    run cat "$calls"
+    [[ "$output" != *"install -y epel-release"* ]]
+    [[ "$output" == *"config-manager --set-enabled crb"* ]]
+}
+
+@test "pkg_ensure_epel: installs epel-release AND enables CRB when absent" {
+    make_os_release "rocky" "9.3"
+    source_os_release
+    rpm() { return 1; }   # simulate epel-release NOT installed
+    local calls="$BATS_TEST_TMPDIR/sudo-calls"
+    : >"$calls"
+    sudo() { printf '%s\n' "$*" >>"$calls"; return 0; }
+    export -f rpm sudo
+    run pkg_ensure_epel
+    [ "$status" -eq 0 ]
+    run cat "$calls"
+    [[ "$output" == *"install -y epel-release"* ]]
+    [[ "$output" == *"config-manager --set-enabled crb"* ]]
+}
+
+@test "pkg_ensure_epel: dry-run on Rocky logs intent without dnf" {
+    make_os_release "rocky" "9.3"
+    source_os_release
+    export DRY_RUN=1
+    rpm() { return 1; }   # simulate "not installed"
+    sudo() { printf 'FAIL: sudo called\n'; return 99; }
+    export -f rpm sudo
+    run pkg_ensure_epel
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[dry-run]"* ]]
+    [[ "$output" == *"epel-release"* ]]
+    [[ "$output" == *"crb"* ]]
+    [[ "$output" != *"FAIL"* ]]
+    unset DRY_RUN
+}
+
+@test "install_chezmoi: noop when binary already on PATH" {
+    # A stub `chezmoi` on PATH should short-circuit the helper.
+    local shimdir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$shimdir"
+    cat >"$shimdir/chezmoi" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$shimdir/chezmoi"
+    PATH="$shimdir:$PATH"
+
+    # Fail loudly if curl is invoked — it must not be.
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f curl
+
+    run install_chezmoi
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"already installed"* ]]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "install_chezmoi: dry-run logs intent without invoking curl" {
+    # Sandbox PATH so chezmoi is NOT found, forcing the install branch,
+    # but keep a reference to the real PATH so bats teardown can still
+    # find `rm` and friends after `run`.
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+    export DRY_RUN=1
+
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f curl
+
+    run install_chezmoi
+    PATH="$saved_path"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[dry-run]"* ]]
+    [[ "$output" == *"get.chezmoi.io"* ]]
+    [[ "$output" != *"FAIL"* ]]
+    unset DRY_RUN
+}
+
+@test "install_chezmoi: aborts when installer fetch fails (R-07)" {
+    # Sourced libraries can't set -o pipefail, so a bare `curl | sh` pipe
+    # would mask curl failures. Verify the two-step capture pattern surfaces
+    # the failure as a non-zero exit plus a clear error message.
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+
+    curl() { return 22; }
+    export -f curl
+
+    run install_chezmoi
+    PATH="$saved_path"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"failed to fetch installer"* ]]
+}
+
+@test "install_direnv: noop when binary already on PATH" {
+    local shimdir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$shimdir"
+    cat >"$shimdir/direnv" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$shimdir/direnv"
+    PATH="$shimdir:$PATH"
+
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f curl
+
+    run install_direnv
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"already installed"* ]]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "install_direnv: dry-run logs intent without invoking curl" {
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+    export DRY_RUN=1
+
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f curl
+
+    run install_direnv
+    PATH="$saved_path"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[dry-run]"* ]]
+    [[ "$output" == *"direnv.net"* ]]
+    [[ "$output" != *"FAIL"* ]]
+    unset DRY_RUN
+}
+
+@test "install_direnv: aborts when installer fetch fails (R-07)" {
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+
+    curl() { return 22; }
+    export -f curl
+
+    run install_direnv
+    PATH="$saved_path"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"failed to fetch installer"* ]]
+}
+
+@test "install_rbw: noop when binary already on PATH" {
+    local shimdir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$shimdir"
+    cat >"$shimdir/rbw" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$shimdir/rbw"
+    PATH="$shimdir:$PATH"
+
+    cargo() { printf 'FAIL: cargo called\n'; return 99; }
+    pkg_install() { printf 'FAIL: pkg_install called\n'; return 99; }
+    export -f cargo pkg_install
+
+    run install_rbw
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"already installed"* ]]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "install_rbw: dry-run logs Ubuntu build deps without invoking cargo or curl" {
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+    export DRY_RUN=1
+
+    cargo() { printf 'FAIL: cargo called\n'; return 99; }
+    pkg_install() { printf 'FAIL: pkg_install called\n'; return 99; }
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f cargo pkg_install curl
+
+    run install_rbw
+    PATH="$saved_path"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[dry-run]"* ]]
+    [[ "$output" == *"libssl-dev"* ]]
+    [[ "$output" == *"build-essential"* ]]
+    [[ "$output" == *"rust toolchain via rustup"* ]]
+    [[ "$output" == *"cargo install rbw"* ]]
+    [[ "$output" != *"FAIL"* ]]
+    unset DRY_RUN
+}
+
+@test "install_rbw: dry-run logs Rocky build deps (dnf-flavored package names)" {
+    make_os_release "rocky" "9.3"
+    source_os_release
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+    export DRY_RUN=1
+
+    cargo() { printf 'FAIL: cargo called\n'; return 99; }
+    pkg_install() { printf 'FAIL: pkg_install called\n'; return 99; }
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f cargo pkg_install curl
+
+    run install_rbw
+    PATH="$saved_path"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"openssl-devel"* ]]
+    [[ "$output" == *"gcc"* ]]
+    # Ubuntu-specific packages must NOT appear on Rocky.
+    [[ "$output" != *"libssl-dev"* ]]
+    [[ "$output" != *"build-essential"* ]]
+    unset DRY_RUN
+}
+
+@test "ensure_rust_toolchain: noop when rustc ≥ 1.82 already on PATH" {
+    local shimdir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$shimdir"
+    cat >"$shimdir/cargo" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    cat >"$shimdir/rustc" <<'EOF'
+#!/usr/bin/env bash
+echo "rustc 1.85.0 (abc 2025-01-01)"
+EOF
+    chmod +x "$shimdir/cargo" "$shimdir/rustc"
+    PATH="$shimdir:$PATH"
+
+    curl() { printf 'FAIL: curl called\n'; return 99; }
+    export -f curl
+
+    run ensure_rust_toolchain
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"meets rbw MSRV"* ]]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "ensure_rust_toolchain: triggers rustup when rustc too old" {
+    local shimdir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$shimdir"
+    cat >"$shimdir/cargo" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    cat >"$shimdir/rustc" <<'EOF'
+#!/usr/bin/env bash
+echo "rustc 1.75.0 (abc 2024-01-01)"
+EOF
+    chmod +x "$shimdir/cargo" "$shimdir/rustc"
+    PATH="$shimdir:$PATH"
+
+    # Capture the rustup-pipe with stub curl | sh. The function pipes
+    # curl output to sh, so replacing both at once is the cleanest seam.
+    local marker="$BATS_TEST_TMPDIR/rustup-invoked"
+    curl() { printf '#!/bin/sh\ntouch %s\n' "$marker"; }
+    sh() { cat | bash "$@"; }
+    export -f curl sh
+
+    run ensure_rust_toolchain
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"below rbw MSRV"* ]]
+    [[ "$output" == *"bootstrapping via rustup"* ]]
+    [ -f "$marker" ]
+}
+
+@test "ensure_rust_toolchain: aborts when rustup fetch fails (R-07)" {
+    # Force the rustup-bootstrap branch: no cargo/rustc on PATH, curl
+    # fails to download the installer. The function must fail loudly
+    # rather than silently proceeding.
+    local saved_path="$PATH"
+    PATH="/nonexistent"
+
+    curl() { return 22; }
+    export -f curl
+
+    run ensure_rust_toolchain
+    PATH="$saved_path"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"failed to fetch rustup installer"* ]]
+}
+
 @test "pkg_repo_add: Rocky writes .repo under YUM_REPOS_DIR" {
     make_os_release "rocky" "9.3"
     source_os_release

@@ -80,3 +80,51 @@ source_install() {
     run shellcheck "$INSTALL_SH"
     [ "$status" -eq 0 ]
 }
+
+@test "install.sh: install_prereqs dry-run emits distro and upstream markers" {
+    source_install
+    parse_flags --dry-run --role=minimal --skip-secrets
+    # Source the library so install_prereqs can resolve install_chezmoi /
+    # install_rbw / is_gnome. The OS dispatch never executes because
+    # DRY_RUN=1, but OS_ID is still needed for install_rbw's guard.
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/lib/platform.sh"
+    source "$REPO_ROOT/tests/helpers/mocks.sh"
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+
+    run install_prereqs
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"would pkg_install"* ]]
+    [[ "$output" == *"upstream prereqs"* ]]
+    [[ "$output" == *"chezmoi"* ]]
+    [[ "$output" == *"rbw"* ]]
+}
+
+@test "install.sh: install_prereqs dry-run never invokes real curl or cargo" {
+    source_install
+    parse_flags --dry-run --role=minimal --skip-secrets
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/lib/platform.sh"
+    source "$REPO_ROOT/tests/helpers/mocks.sh"
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+
+    # Stub curl/cargo/sh/pkg_install to fail loudly if the dry-run branch
+    # accidentally invokes them. command -v chezmoi / rbw will already
+    # return true in the sourced test environment, so we also wipe those
+    # via a restricted PATH to force the [dry-run] branch.
+    curl() { printf 'FAIL: curl called\n' >&2; return 99; }
+    cargo() { printf 'FAIL: cargo called\n' >&2; return 99; }
+    pkg_install() { printf 'FAIL: pkg_install called\n' >&2; return 99; }
+    export -f curl cargo pkg_install
+
+    # Sandbox PATH so chezmoi / rbw are NOT found — forces the install
+    # branch inside install_chezmoi / install_rbw, which should still
+    # short-circuit on DRY_RUN=1.
+    PATH="/nonexistent" run install_prereqs
+    [ "$status" -eq 0 ]
+    [[ "$output" != *"FAIL: curl called"* ]]
+    [[ "$output" != *"FAIL: cargo called"* ]]
+    [[ "$output" != *"FAIL: pkg_install called"* ]]
+}
