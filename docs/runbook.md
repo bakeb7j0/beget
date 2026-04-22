@@ -371,6 +371,46 @@ curl -fsSL https://raw.githubusercontent.com/bakeb7j0/beget/main/install.sh | he
 The canary is deliberately non-blocking: the job exits 0 so PR required checks
 stay unaffected. Close the issue when a subsequent run goes green.
 
+### smoke: no-TTY error
+
+**Symptom**: The one-liner exits immediately with:
+
+```
+ERROR: no TTY available for interactive rbw login. Either run in an
+interactive shell, or pass --skip-secrets to bootstrap without secrets
+(run 'rbw login && chezmoi apply' later to complete).
+```
+
+This fires when install.sh is invoked without a controlling terminal and
+without `--skip-secrets`. Common triggers: bare `curl ... | bash` from a
+SSH session that was opened non-interactively (e.g. `ssh host 'curl ... | bash'`),
+scripted bootstrap from a Dockerfile `RUN` line, or any CI runner that
+pipes the script with no pty attached. The preflight aborts early on
+purpose — `rbw login` would otherwise read EOF from the pipe and leave
+the machine half-configured (#98).
+
+**Fix — headless / automated runs**:
+
+```bash
+# Pass --skip-secrets to bootstrap without Vaultwarden, then finish the
+# secret materialization after logging in.
+curl -fsSL https://raw.githubusercontent.com/bakeb7j0/beget/main/install.sh \
+    | bash -s -- --skip-secrets
+
+# Later, from an interactive shell on the same machine:
+rbw login
+chezmoi apply
+```
+
+**Fix — interactive runs where the TTY really should be there**:
+
+If you're sitting at a terminal but still get this error, the stdin
+reparent in install.sh (`exec </dev/tty`) failed to open `/dev/tty`.
+That happens in sandboxed subshells, some container runtimes without a
+controlling terminal, or when the wrapping shell has already detached
+from its tty. Either re-run from a shell where `[ -t 0 ]` succeeds, or
+fall back to the `--skip-secrets` flow above.
+
 ### rbw locked
 
 **Symptom**: Any `rbw <subcommand>` or a wrapper like `gh` refuses with

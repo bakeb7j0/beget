@@ -43,7 +43,14 @@ docker build -f "$dockerfile" -t "$image" .
 # beget user (uid 1000) because install.sh shells out to sudo apt/dnf,
 # and sudo needs an /etc/passwd entry matching the runtime uid. Pipe
 # to bash -s -- so install.sh parses its flags correctly.
-canary_cmd='rm -f /usr/local/bin/chezmoi 2>/dev/null; sudo rm -f /usr/local/bin/chezmoi; curl -fsSL https://raw.githubusercontent.com/bakeb7j0/beget/main/install.sh | bash -s -- --skip-secrets --role=minimal && command -v chezmoi && command -v rbw && command -v direnv'
+#
+# Post-install binary checks: chezmoi/rbw/direnv come from install.sh's
+# prereq phase; `glab` is expected from the chezmoi apply phase and is
+# asserted here per issue #98 AC — the original report (".bashrc and
+# adjacent files ... glab is not installed") traced back to an aborted
+# chezmoi apply, so a missing glab is the canonical symptom of the
+# post-merge install-path regression this canary exists to catch.
+canary_cmd='rm -f /usr/local/bin/chezmoi 2>/dev/null; sudo rm -f /usr/local/bin/chezmoi; curl -fsSL https://raw.githubusercontent.com/bakeb7j0/beget/main/install.sh | bash -s -- --skip-secrets --role=minimal && command -v chezmoi && command -v rbw && command -v direnv && command -v glab'
 
 start=$(date +%s)
 canary_log="$(mktemp)"
