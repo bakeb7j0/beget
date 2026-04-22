@@ -105,9 +105,9 @@ if [[ "$canary_status" == "fail" && -n "${GITHUB_ACTIONS:-}" && -n "${GH_TOKEN:-
     # markers. We search broadly then filter to the exact per-distro title.
     existing_number=""
     if existing_json="$(gh issue list --search "smoke canary" --state open --json number,title 2>/dev/null)"; then
-        existing_number="$(printf '%s' "$existing_json" \
-            | jq -r --arg t "$issue_title" '.[] | select(.title == $t) | .number' \
-            | head -n1)"
+        existing_number="$(printf '%s' "$existing_json" |
+            jq -r --arg t "$issue_title" '.[] | select(.title == $t) | .number' |
+            head -n1)"
     fi
     comment_body="Canary re-failed on \`${distro}\`.
 
