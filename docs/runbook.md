@@ -344,6 +344,33 @@ pattern).
 
 ## Troubleshooting
 
+### smoke: one-liner canary failing
+
+**Symptom**: A GitHub issue titled `smoke: one-liner canary failing on <distro>`
+appears (filed automatically by `scripts/ci/run-smoke-canary.sh` when the daily
+scheduled or post-merge-to-`main` canary fails). The linked run piped the
+published raw URL through bash inside a clean container and exited non-zero.
+
+**Fix**:
+
+```bash
+# 1. Open the linked GHA run from the issue body and skim the install.sh output.
+
+# 2. Sanity-check the raw URL still serves current main:
+curl -fsSL https://raw.githubusercontent.com/bakeb7j0/beget/main/install.sh | head
+
+# 3. Reproduce locally in the same container the canary uses:
+./scripts/ci/run-smoke-canary.sh ubuntu24   # or rocky9
+
+# 4. If the failure is systemic (e.g. upstream apt mirror flapping, or a broken
+#    commit on main), pause the schedule while you fix it — disable the
+#    workflow in the GitHub UI, or comment out the `cron:` line in
+#    .github/workflows/smoke-canary.yml and commit.
+```
+
+The canary is deliberately non-blocking: the job exits 0 so PR required checks
+stay unaffected. Close the issue when a subsequent run goes green.
+
 ### rbw locked
 
 **Symptom**: Any `rbw <subcommand>` or a wrapper like `gh` refuses with
