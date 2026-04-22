@@ -98,7 +98,6 @@ with_mock_rbw() {
 #!/usr/bin/env bash
 case "${1:-}" in
     --version) echo "rbw 1.14.0 (e2e mock)"; exit 0 ;;
-    status) exit 0 ;;
     login) exit 0 ;;
     unlock) exit 0 ;;
     get)
@@ -142,6 +141,12 @@ EOF
 source_install() {
     local repo="${1:?repo path required}"
     export BEGET_INSTALL_SOURCED=1
+    # Suppress the /dev/tty stdin reparent block at the top of install.sh.
+    # The reparent logs a harmless "No such device or address" on stderr in
+    # sandboxes where /dev/tty exists as a char device but cannot be
+    # opened, which pollutes test output even though the `|| true` keeps
+    # bash running.
+    export BEGET_SKIP_TTY_REPARENT=1
     # install.sh defers sourcing lib/platform.sh until main(); since
     # we skip main(), bring platform.sh in directly so preflight /
     # install_prereqs have source_os_release + friends available.

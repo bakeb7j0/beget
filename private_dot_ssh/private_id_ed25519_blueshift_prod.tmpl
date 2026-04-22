@@ -1,1 +1,3 @@
+{{- if not (index . "skip_secrets") -}}
 {{ (rbwFields "ssh-id-ed25519-blueshift-prod").privateKey.value }}
+{{ end -}}
