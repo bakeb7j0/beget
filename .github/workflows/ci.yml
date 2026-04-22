@@ -91,3 +91,48 @@ jobs:
           name: e2e-rocky-junit
           path: tests/results/*.xml
           if-no-files-found: ignore
+
+  # Post-merge real-world canary — pipes the published raw-URL one-liner
+  # into bash inside each distro container. Non-blocking: the script exits
+  # 0 and opens / updates a dedup'd issue on failure (see
+  # scripts/ci/run-smoke-canary.sh). Scheduled twin lives in
+  # .github/workflows/smoke-canary.yml.
+  smoke-canary-ubuntu:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-smoke-canary.sh ubuntu24
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-canary-ubuntu-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
+
+  smoke-canary-rocky:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-smoke-canary.sh rocky9
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-canary-rocky-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore

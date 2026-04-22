@@ -1,0 +1,55 @@
+name: smoke-canary
+
+# Daily + on-demand real-world canary: pipes the published raw-URL
+# one-liner into bash inside clean ubuntu24 / rocky9 containers. Script
+# opens or updates a dedup'd GitHub issue on failure and exits 0, so a
+# flake here never blocks PRs. The issue IS the signal.
+#
+# Post-merge canary lives as a separate job in .github/workflows/ci.yml
+# (gated to `push` on `main`). Both share scripts/ci/run-smoke-canary.sh.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-canary-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary-ubuntu:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-smoke-canary.sh ubuntu24
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-canary-ubuntu-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
+
+  canary-rocky:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - run: ./scripts/ci/run-smoke-canary.sh rocky9
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-canary-rocky-junit
+          path: tests/results/*.xml
+          if-no-files-found: ignore
