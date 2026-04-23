@@ -66,7 +66,7 @@ test-unit: bootstrap-test-deps
 	@mkdir -p tests/results
 	tests/bats/bin/bats --report-formatter junit --output tests/results tests/unit
 
-# ---- Integration tests (IT-01, IT-02, IT-03, IT-08, IT-09) ------------------
+# ---- Integration tests (IT-01, IT-02, IT-03, IT-08, IT-09, IT-10) -----------
 # Runs each tests/integration/*.sh in turn. A failure in any one stops the
 # tier with a non-zero exit so CI surfaces the first offender clearly.
 test-integration:
@@ -74,7 +74,7 @@ test-integration:
 	mkdir -p tests/results; \
 	for s in tests/integration/shellcheck.sh tests/integration/shfmt.sh \
 	          tests/integration/chezmoi-render.sh tests/integration/header-comments.sh \
-	          tests/integration/make-targets.sh; do \
+	          tests/integration/make-targets.sh tests/integration/chezmoiignore-dispatch.sh; do \
 	    if [[ ! -x "$$s" ]]; then echo "MISSING: $$s" >&2; exit 1; fi; \
 	    echo "==> $$s"; \
 	    "$$s"; \
