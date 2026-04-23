@@ -39,11 +39,16 @@ run_test() {
     # upstream installers without actually invoking apt/cargo/curl. This
     # is the "chezmoi/rbw were never in the distro repos" invariant that
     # originally motivated R-01.
+    #
+    # chezmoi is baked into Dockerfile.ubuntu24 for speed, so install_chezmoi
+    # hits the idempotency branch before DRY_RUN and logs "already installed"
+    # instead of the dry-run marker. Accept either — both prove install_user_local
+    # handled chezmoi. Same applies to direnv/rbw if a future image bakes them in.
     local out
     out="$(install_user_local 2>&1)" || return 1
-    assert_match "$out" "\[dry-run\] would install chezmoi" "chezmoi dry-run marker" || return 1
-    assert_match "$out" "\[dry-run\] would install direnv" "direnv dry-run marker" || return 1
-    assert_match "$out" "\[dry-run\] would cargo install rbw" "rbw dry-run marker" || return 1
+    assert_match "$out" "chezmoi already installed|\[dry-run\] would install chezmoi" "chezmoi marker" || return 1
+    assert_match "$out" "direnv already installed|\[dry-run\] would install direnv" "direnv marker" || return 1
+    assert_match "$out" "rbw already installed|\[dry-run\] would cargo install rbw" "rbw marker" || return 1
 }
 
 start=$(date +%s)
