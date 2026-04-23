@@ -1,0 +1,16 @@
+{{- /*
+  Per-host file filter. chezmoi renders this template against the target
+  host's environment, then ignores whichever files the rendered output
+  lists. Used here to gate the two repo-registration scripts by OS
+  family — they are not themselves templated, so without this filter
+  chezmoi would run apt-repos on a dnf host (and vice versa).
+*/ -}}
+{{- $id := .chezmoi.osRelease.id -}}
+{{- $isDebianFamily := or (eq $id "ubuntu") (eq $id "debian") (eq $id "linuxmint") (eq $id "pop") -}}
+{{- $isRhelFamily := or (eq $id "rhel") (eq $id "rocky") (eq $id "centos") (eq $id "almalinux") (eq $id "fedora") -}}
+{{- if not $isDebianFamily }}
+run_onchange_before_10-apt-repos.sh
+{{- end }}
+{{- if not $isRhelFamily }}
+run_onchange_before_10-dnf-repos.sh
+{{- end }}
