@@ -21,12 +21,21 @@ RUN apt-get update -qq \
         bash \
         ca-certificates \
         curl \
-        git \
         jq \
         python3 \
         sudo \
         shellcheck \
         tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install beget's distro-level prerequisites via the same script users run.
+# This bakes the root-owned packages (pinentry-curses, build deps for rbw,
+# etc.) into the image so `bash install.sh` at E2E time exits zero without
+# needing sudo — which is the whole point of issue #100. Doing it here also
+# acts as an image-build-time smoke test of install-prereqs.sh itself.
+COPY scripts/install-prereqs.sh /tmp/install-prereqs.sh
+RUN bash /tmp/install-prereqs.sh \
+    && rm -f /tmp/install-prereqs.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Install chezmoi at a pinned version. We skip rbw — tests that need it

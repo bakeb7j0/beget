@@ -8,8 +8,16 @@
 #   --dry-run        Show what would happen without mutating the system.
 #   --role=<X>       Pass a role tag (workstation|server|minimal) to chezmoi.
 #   --skip-secrets   Bootstrap without rbw login or secret materialization.
+#   --skip-prereqs   Bypass the preflight scan for distro-managed packages.
+#                    Intended for CI/automation environments that have
+#                    already run scripts/install-prereqs.sh.
 #   --allow-root     Permit running as root (refused by default).
 #   --help           Print usage and exit.
+#
+# This script is PURELY USER-LOCAL — it never calls sudo. Distro-level
+# (root-requiring) packages are installed by scripts/install-prereqs.sh.
+# If any distro prereq is missing, preflight_root_requirements exits with
+# code 3 and a copy-pasteable remediation command.
 #
 # Environment overrides (test seams):
 #   BEGET_RAW_BASE   When set, locate_lib_platform() fetches lib/platform.sh
@@ -25,7 +33,7 @@
 set -euo pipefail
 
 # When piped via `curl ... | bash`, bash's fd 0 is the pipe, so anything the
-# script spawns (rbw login, sudo) cannot prompt the user. Reparent fd 0 to the
+# script spawns (rbw login) cannot prompt the user. Reparent fd 0 to the
 # controlling terminal when one exists. The `|| true` catches the case where
 # /dev/tty is present but not openable (no controlling terminal — headless CI,
 # some container runtimes, sandboxed subshells). BEGET_SKIP_TTY_REPARENT lets
@@ -42,20 +50,11 @@ readonly BEGET_REPO_URL="https://github.com/bakeb7j0/beget"
 # one-liner test (E2E-09) uses this to point at a loopback HTTP server.
 readonly BEGET_RAW_BASE="${BEGET_RAW_BASE:-}"
 readonly REQUIRED_TOOLS=(curl git bash)
-# Distro-managed prereqs — routed through apt/dnf via pkg_install.
-# The curses/TTY pinentry is resolved per-distro by
-# pkg_name_pinentry_tty() (Ubuntu: pinentry-curses, Rocky: pinentry)
-# so we build the list dynamically in install_prereqs rather than
-# baking a Debian-centric constant. pinentry-gnome3 is appended
-# conditionally when running under GNOME.
-# direnv is intentionally NOT here: it's in Ubuntu's apt repos but not
-# in Rocky 9 (base or EPEL), so the upstream installer is the only
-# uniform path across both distros.
-# Upstream prereqs — none of chezmoi, direnv, or rbw is uniformly
-# available in Ubuntu/Rocky default repos, so each has a dedicated
-# installer in lib/platform.sh (install_chezmoi, install_direnv,
-# install_rbw).
-readonly UPSTREAM_PREREQS=(chezmoi direnv rbw)
+
+# Exit code emitted by preflight_root_requirements when any distro
+# package is missing. Distinct from die()'s generic exit 1 so CI and
+# users can distinguish "run install-prereqs.sh first" from real errors.
+readonly EXIT_MISSING_PREREQS=3
 
 # ---- Helpers -----------------------------------------------------------------
 
@@ -79,10 +78,16 @@ Options:
   --role=<X>        Role tag to pass to chezmoi (workstation|server|minimal).
                     Defaults to "workstation".
   --skip-secrets    Skip rbw login and secret materialization.
+  --skip-prereqs    Bypass preflight scan for distro-managed packages
+                    (intended for CI that already ran install-prereqs.sh).
   --skip-apply      Stop after chezmoi init; skip the final 'chezmoi apply'.
                     Useful for staged rollouts and CI bootstrap tests.
   --allow-root      Allow execution as root (refused by default, R-03).
   --help            Show this help and exit.
+
+install.sh is purely user-local: it does not invoke sudo. On fresh
+machines, run scripts/install-prereqs.sh as root first to install
+distro packages, then run this script as your unprivileged user.
 
 Example:
   curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh \
@@ -126,6 +131,7 @@ DRY_RUN=0
 ROLE="workstation"
 SKIP_SECRETS=0
 SKIP_APPLY=0
+SKIP_PREREQS=0
 ALLOW_ROOT=0
 
 parse_flags() {
@@ -136,6 +142,7 @@ parse_flags() {
             --role=*) ROLE="${arg#--role=}" ;;
             --skip-secrets) SKIP_SECRETS=1 ;;
             --skip-apply) SKIP_APPLY=1 ;;
+            --skip-prereqs) SKIP_PREREQS=1 ;;
             --allow-root) ALLOW_ROOT=1 ;;
             --help | -h)
                 usage
@@ -193,33 +200,132 @@ preflight() {
     log "pre-flight OK: role=${ROLE} os=${OS_ID}:${OS_MAJOR_VERSION} dry_run=${DRY_RUN} skip_secrets=${SKIP_SECRETS}"
 }
 
-# ---- Prereq install ----------------------------------------------------------
+# ---- Preflight: distro-level prerequisite scan -------------------------------
 
-install_prereqs() {
-    # Build the distro-prereq list now that OS_ID is known (preflight
-    # has already sourced /etc/os-release). pkg_name_pinentry_tty()
-    # lives in lib/platform.sh and resolves the curses-pinentry name
-    # per-distro.
-    local pkgs=("$(pkg_name_pinentry_tty)" git curl)
-
-    # pinentry-gnome3 is only meaningful on GNOME desktops.
+# Emit the expected distro package list for the detected OS (+ optional
+# GNOME desktop pinentry). Called by preflight_root_requirements to
+# build the "must be installed" set. OS_ID must already be populated.
+expected_distro_pkgs() {
+    case "$OS_ID" in
+        ubuntu | debian)
+            printf '%s\n' \
+                pinentry-curses \
+                git \
+                curl \
+                pkg-config \
+                libssl-dev \
+                build-essential
+            ;;
+        rocky | rhel | centos | almalinux)
+            # pkgconf-pkg-config is the RPM that installs /usr/bin/pkg-config
+            # on RHEL-family. `dnf install pkg-config` also works (Provides
+            # metadata), but `rpm -q pkg-config` does NOT — our scan uses
+            # rpm -q via distro_pkg_installed, so we must name the real pkg.
+            printf '%s\n' \
+                pinentry \
+                git \
+                curl \
+                pkgconf-pkg-config \
+                openssl-devel \
+                gcc
+            ;;
+        *)
+            die "expected_distro_pkgs: unsupported OS_ID: $OS_ID"
+            ;;
+    esac
     if is_gnome; then
-        pkgs+=(pinentry-gnome3)
+        printf '%s\n' pinentry-gnome3
+    fi
+}
+
+# Return 0 if $1 is installed, 1 otherwise. Dispatches per OS_ID.
+distro_pkg_installed() {
+    local pkg="$1"
+    case "$OS_ID" in
+        ubuntu | debian)
+            dpkg -s "$pkg" >/dev/null 2>&1
+            ;;
+        rocky | rhel | centos | almalinux)
+            rpm -q "$pkg" >/dev/null 2>&1
+            ;;
+        *)
+            die "distro_pkg_installed: unsupported OS_ID: $OS_ID"
+            ;;
+    esac
+}
+
+# Return 0 if the named dnf repo is enabled, 1 otherwise. Rocky/RHEL only.
+rocky_repo_enabled() {
+    local repo="$1"
+    command -v dnf >/dev/null 2>&1 || return 1
+    dnf repolist --enabled 2>/dev/null | awk '{print $1}' | grep -Fxq "$repo"
+}
+
+# Scan for missing distro packages and exit with EXIT_MISSING_PREREQS if
+# any are missing. On success (all present), returns 0 silently.
+# Honors --skip-prereqs by returning 0 immediately.
+preflight_root_requirements() {
+    if [[ "$SKIP_PREREQS" -eq 1 ]]; then
+        log "skipping preflight_root_requirements (--skip-prereqs)"
+        return 0
     fi
 
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        log "[dry-run] would ensure EPEL on RHEL-family"
-        log "[dry-run] would pkg_install: ${pkgs[*]}"
-        log "[dry-run] would install upstream prereqs: ${UPSTREAM_PREREQS[*]}"
-    else
-        # direnv (and some other userspace tooling) live in EPEL on
-        # Rocky/RHEL, so EPEL has to be enabled before pkg_install
-        # runs. Noop on Debian-family.
-        pkg_ensure_epel || die "EPEL enablement failed"
-        log "installing distro prereqs: ${pkgs[*]}"
-        pkg_install "${pkgs[@]}" || die "distro prereq install failed"
+    local expected missing=()
+    expected=$(expected_distro_pkgs)
+
+    local pkg
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] || continue
+        if ! distro_pkg_installed "$pkg"; then
+            missing+=("$pkg")
+        fi
+    done <<<"$expected"
+
+    # Rocky-only: EPEL + CRB. Missing either one blocks rbw/direnv builds
+    # downstream, so we surface them alongside missing packages.
+    local repo_hints=()
+    case "$OS_ID" in
+        rocky | rhel | centos | almalinux)
+            if ! distro_pkg_installed epel-release; then
+                missing+=(epel-release)
+            fi
+            if ! rocky_repo_enabled crb; then
+                repo_hints+=("enable CRB repo: dnf config-manager --set-enabled crb")
+            fi
+            ;;
+    esac
+
+    if [[ ${#missing[@]} -eq 0 && ${#repo_hints[@]} -eq 0 ]]; then
+        log "distro prereqs OK: $(echo "$expected" | tr '\n' ' ')"
+        return 0
     fi
 
+    # Build the copy-pasteable remediation. Prefer the one-step
+    # install-prereqs.sh pointer so users don't have to track the
+    # full pkg list themselves.
+    printf 'ERROR: missing root-installed prerequisites.\n' >&2
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        printf '  packages: %s\n' "${missing[*]}" >&2
+    fi
+    if [[ ${#repo_hints[@]} -gt 0 ]]; then
+        local hint
+        for hint in "${repo_hints[@]}"; do
+            printf '  repo: %s\n' "$hint" >&2
+        done
+    fi
+    printf '\n' >&2
+    printf 'To remediate, run as root (or via sudo):\n' >&2
+    printf '  curl -fsSL %s/raw/HEAD/scripts/install-prereqs.sh | sudo bash\n' "$BEGET_REPO_URL" >&2
+    printf '\n' >&2
+    printf 'Or install the packages manually with your distro package manager.\n' >&2
+    printf 'Then re-run:\n' >&2
+    printf '  curl -fsSL %s/raw/HEAD/install.sh | bash\n' "$BEGET_REPO_URL" >&2
+    exit "$EXIT_MISSING_PREREQS"
+}
+
+# ---- User-local installs (chezmoi, direnv, rbw) ------------------------------
+
+install_user_local() {
     install_chezmoi || die "chezmoi install failed"
     install_direnv || die "direnv install failed"
     install_rbw || die "rbw install failed"
@@ -320,7 +426,8 @@ main() {
     source "$lib_path"
 
     preflight
-    install_prereqs
+    preflight_root_requirements
+    install_user_local
     write_chezmoi_config
     chezmoi_bootstrap
     rbw_prompt_if_needed

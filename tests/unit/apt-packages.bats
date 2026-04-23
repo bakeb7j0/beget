@@ -141,6 +141,72 @@ LIST
     [[ "$output" == *"CALL: only-common-pkg"* ]]
 }
 
+@test "default installer (no BEGET_PKG_INSTALL) dispatches via beget_pkg_install" {
+    # Regression guard for #100: the script used to default to pkg_install
+    # which was defined in lib/platform.sh. When platform.sh stopped providing
+    # pkg_install, the default path broke silently (tests all stub the
+    # installer). This test exercises the default path by stubbing sudo
+    # instead, so we catch a recurrence.
+    stage_list minimal curl git
+    unset BEGET_PKG_INSTALL
+
+    # Intercept sudo so the "real" beget_pkg_install path runs without
+    # actually invoking apt-get/dnf.
+    local shim="$BATS_TEST_TMPDIR/sudo-shim"
+    mkdir -p "$shim"
+    cat >"$shim/sudo" <<'EOF'
+#!/usr/bin/env bash
+printf 'SUDO:'
+printf ' %s' "$@"
+printf '\n'
+EOF
+    chmod +x "$shim/sudo"
+
+    # Force the OS dispatch into the apt branch regardless of host OS.
+    local os_release="$BATS_TEST_TMPDIR/os-release"
+    printf 'ID=ubuntu\nVERSION_ID="24.04"\n' >"$os_release"
+
+    PATH="$shim:$PATH" OS_RELEASE_FILE="$os_release" \
+        BEGET_ROLE=minimal run bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SUDO: apt-get install -y curl git"* ]]
+}
+
+@test "default installer on Rocky dispatches via dnf" {
+    stage_list minimal curl git
+    unset BEGET_PKG_INSTALL
+
+    local shim="$BATS_TEST_TMPDIR/sudo-shim"
+    mkdir -p "$shim"
+    cat >"$shim/sudo" <<'EOF'
+#!/usr/bin/env bash
+printf 'SUDO:'
+printf ' %s' "$@"
+printf '\n'
+EOF
+    chmod +x "$shim/sudo"
+
+    local os_release="$BATS_TEST_TMPDIR/os-release"
+    printf 'ID=rocky\nVERSION_ID="9.3"\n' >"$os_release"
+
+    PATH="$shim:$PATH" OS_RELEASE_FILE="$os_release" \
+        BEGET_ROLE=minimal run bash "$SCRIPT"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"SUDO: dnf install -y curl git"* ]]
+}
+
+@test "default installer on unsupported OS fails with a clear message" {
+    stage_list minimal curl git
+    unset BEGET_PKG_INSTALL
+
+    local os_release="$BATS_TEST_TMPDIR/os-release"
+    printf 'ID=alpine\nVERSION_ID="3.19"\n' >"$os_release"
+
+    OS_RELEASE_FILE="$os_release" BEGET_ROLE=minimal run bash "$SCRIPT"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"unsupported OS alpine"* ]]
+}
+
 @test "script is idempotent: two runs produce the same set of installer calls" {
     stage_list common one two
     stage_list workstation three

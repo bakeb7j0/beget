@@ -26,20 +26,49 @@ The Dev Spec covers:
 - Definition of Done
 - Phased implementation plan: 28 stories across 11 waves and 3 phases
 
-## One-liner install (Phase 1 target, not yet available)
+## Install
+
+The bootstrap is a two-step install: a one-time root step that lays down the
+distro packages beget's toolchain depends on, then a user-local step that does
+everything else.
+
+**Step 1 — distro prerequisites (one-time, runs as root):**
+
+```bash
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/scripts/install-prereqs.sh | sudo bash
+```
+
+This installs packages that can only come from the system package manager:
+`pinentry` (for GPG/rbw prompts), `pkg-config` and the OpenSSL dev headers +
+C toolchain (needed by `cargo install rbw`), plus the small set of userland
+tools (`git`, `curl`) beget itself shells out to. On Rocky 9 it also enables
+EPEL and CodeReady Builder. See [`scripts/install-prereqs.sh`](scripts/install-prereqs.sh)
+for the full per-distro package list.
+
+**Step 2 — user-local install (no sudo needed):**
 
 ```bash
 curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash
 ```
 
-`install.sh` is produced by Phase 1. It does not exist yet.
+`install.sh` installs chezmoi, direnv, rbw, and everything else into
+`~/.local/bin` / `~/.cargo/bin`, clones this repo, and applies chezmoi. It
+scans for the step-1 prerequisites up front and exits with actionable guidance
+if anything is missing — it **never** calls `sudo` itself, which means the
+one-liner is safe to run non-interactively (CI, containers without passwordless
+sudo, etc.).
+
+CI and automation paths that know the host is already prepped can pass
+`--skip-prereqs` to bypass the up-front scan.
 
 ## Prerequisites
 
 _Stub — detailed prerequisites will be documented as stories land._
 
 - A supported Linux distribution (see [Supported Platforms](#supported-platforms))
-- `git`, `curl`, and `bash` available on the target host
+- `git`, `curl`, and `bash` available on the target host (`install-prereqs.sh`
+  provides `git` and `curl`; a minimal bootstrap needs `curl` + `bash` to
+  fetch step 1).
 - Network access to GitHub for fetching this repo and its dependencies
 
 ## Supported Platforms

@@ -40,13 +40,16 @@ image="beget-e2e:${distro}"
 docker build -f "$dockerfile" -t "$image" .
 
 # The bootstrap command the README promises. Runs as the Dockerfile's
-# beget user (uid 1000) because install.sh shells out to sudo apt/dnf,
-# and sudo needs an /etc/passwd entry matching the runtime uid. Pipe
-# to bash -s -- so install.sh parses its flags correctly.
+# beget user (uid 1000); per issue #100 install.sh is purely user-local
+# and invokes no sudo, so the uid choice is just convention with
+# run-e2e.sh. Distro prereqs (pinentry, build deps for rbw, etc.) were
+# baked into the image by `scripts/install-prereqs.sh` at build time —
+# the canary assumes the two-step user story (prereqs already installed)
+# and exercises only the user-local second step that `install.sh` owns.
 #
 # Post-install binary checks: chezmoi/rbw/direnv come from install.sh's
-# prereq phase; `glab` is expected from the chezmoi apply phase and is
-# asserted here per issue #98 AC — the original report (".bashrc and
+# user-local phase; `glab` is expected from the chezmoi apply phase and
+# is asserted here per issue #98 AC — the original report (".bashrc and
 # adjacent files ... glab is not installed") traced back to an aborted
 # chezmoi apply, so a missing glab is the canonical symptom of the
 # post-merge install-path regression this canary exists to catch.

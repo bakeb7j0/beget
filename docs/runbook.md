@@ -37,30 +37,39 @@ change — pair each runbook section with the corresponding procedure in
 - Ubuntu 24.04+ or RHEL 9+/family (Fedora, Rocky, Alma).
 - Network access to `github.com` and the Vaultwarden host.
 - Vaultwarden master password memorized.
-- A user account with `sudo` (not root — installer refuses `--allow-root` by default).
+- A user account with `sudo` access (needed for step 1 only; `install.sh` itself is purely user-local).
 
 **Commands**
 
 ```bash
-# One-liner entry point:
+# Step 1: distro prerequisites (one-time, root). Installs pinentry, build
+# deps for rbw, EPEL+CRB on Rocky, etc. Safe to run repeatedly.
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/scripts/install-prereqs.sh | sudo bash
+
+# Step 2: user-local install (no sudo). Scans for the step-1 packages up
+# front; exits with remediation if anything is missing. If you've already
+# prepped the host (e.g. via a config-management tool), pass --skip-prereqs
+# to bypass the scan.
 curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash -s -- --role=workstation
 ```
 
-Expected output (abridged):
+Expected output from step 2 (abridged):
 
 ```
-[install] beget bootstrap starting
-[install] OS: ubuntu 24.04 — supported
-[install] installing prerequisites: chezmoi rbw direnv pinentry-curses git curl
-...
-[install] running: chezmoi init https://github.com/bakeb7j0/beget --data role=workstation
-[install] chezmoi apply complete
-[install] done. Open a new terminal for all changes to take effect.
+[install] pre-flight OK: role=workstation os=ubuntu:24 dry_run=0 skip_secrets=0
+[install] distro prereqs OK: pinentry-curses git curl pkg-config libssl-dev build-essential
+[platform] installing chezmoi from https://get.chezmoi.io into /home/<you>/.local/bin
+[platform] installing direnv from https://direnv.net/install.sh into /home/<you>/.local/bin
+[platform] cargo install rbw --locked (this can take 5-10 minutes)
+[install] chezmoi init https://github.com/bakeb7j0/beget (role=workstation)
+[install] chezmoi apply ...
+[install] bootstrap complete — role=workstation
+[install] next: open a fresh shell and run 'chezmoi apply' again to pick up any follow-on changes.
 ```
 
 **Post-condition check** — run the [Deployment Verification Checklist](deployment-verification.md).
 
-**Troubleshooting**: see [rbw locked](#rbw-locked), [Vaultwarden unreachable](#vaultwarden-unreachable), [chezmoi conflicts](#chezmoi-conflicts).
+**Troubleshooting**: see [missing prereqs](#missing-prereqs--fresh-machine), [rbw locked](#rbw-locked), [Vaultwarden unreachable](#vaultwarden-unreachable), [chezmoi conflicts](#chezmoi-conflicts).
 
 ---
 
@@ -190,6 +199,12 @@ echo "${BEGET_CONTEXT:-unset}"  # → unset
 **Fresh bootstrap without network to Vaultwarden**
 
 ```bash
+# Step 1 is unchanged — still needed on a fresh machine (distro pkgs come
+# from apt/dnf, not from Vaultwarden).
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/scripts/install-prereqs.sh | sudo bash
+
+# Step 2 with --skip-secrets so rbw login/sync can be deferred until VW
+# is reachable.
 curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash -s -- --role=workstation --skip-secrets
 ```
 
@@ -343,6 +358,58 @@ pattern).
 ---
 
 ## Troubleshooting
+
+### Missing prereqs — fresh machine
+
+**Symptom**: `install.sh` exits quickly (well under a second) with exit
+code `3` and a message like:
+
+```
+ERROR: missing root-installed prerequisites.
+  packages: pinentry-curses libssl-dev build-essential
+
+To remediate, run as root (or via sudo):
+  curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/scripts/install-prereqs.sh | sudo bash
+
+Or install the packages manually with your distro package manager.
+Then re-run:
+  curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash
+```
+
+On Rocky, the message may additionally list a `repo:` line for EPEL or CRB
+if those aren't enabled.
+
+**Cause**: You jumped straight to step 2 of the Fresh Machine Bootstrap
+without running the step-1 prereq installer first. Per issue #100,
+`install.sh` is explicitly user-local — it detects the missing distro
+packages up front and exits with remediation rather than hanging on an
+invisible `sudo` password prompt (the failure mode that originally
+drove #100 in containers without passwordless sudo).
+
+**Fix — the normal case**:
+
+Copy-paste the command from the remediation block (it's the same one-liner
+§1 documents). Then re-run `install.sh`:
+
+```bash
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/scripts/install-prereqs.sh | sudo bash
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash -s -- --role=workstation
+```
+
+**Fix — CI / automation / immutable images**:
+
+If the packages are already present by construction (a provisioned VM,
+a pre-baked container image, a config-management tool that runs before
+`install.sh`), pass `--skip-prereqs` to bypass the scan:
+
+```bash
+curl -fsSL https://github.com/bakeb7j0/beget/raw/HEAD/install.sh | bash -s -- --skip-prereqs
+```
+
+`--skip-prereqs` only skips the up-front detection; it does not change
+the packages `install.sh` ultimately depends on. If they genuinely are
+not installed, later steps (e.g. `cargo install rbw`) will fail with
+their own errors.
 
 ### smoke: one-liner canary failing
 

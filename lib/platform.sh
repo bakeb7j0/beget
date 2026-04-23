@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
-# lib/platform.sh — OS detection and package manager abstraction
+# lib/platform.sh — OS detection and user-local installers.
 #
 # Sourced library. Do NOT set -euo pipefail globally here — a library must
 # not alter the caller's shell options. Individual functions use `local`
 # variables and explicit return codes.
 #
+# This library intentionally contains ZERO sudo calls. Distro-level
+# (root-requiring) packages are installed by scripts/install-prereqs.sh
+# in a separate, explicit step; install.sh scans for them in preflight
+# and exits with actionable guidance if anything is missing. See #100.
+#
 # Public functions:
 #   source_os_release          — populate OS_ID and OS_MAJOR_VERSION
-#   pkg_install <pkg>...       — install packages via apt-get or dnf
-#   pkg_repo_add <url> <keyring_url> <name>
-#                              — register an apt or yum repo
+#   pkg_name_pinentry_tty      — print distro-appropriate curses pinentry pkg name
 #   is_gnome                   — return 0 if running under GNOME
 #   die_if_unsupported_os      — abort if OS is not Ubuntu 24.04 or Rocky 9
 #   install_chezmoi            — install chezmoi via upstream get.chezmoi.io
 #   install_direnv             — install direnv via upstream direnv.net
+#   ensure_rust_toolchain      — install rustup + stable toolchain (user-local)
 #   install_rbw                — install rbw via cargo (builds toolchain if needed)
 #
 # Test seams (env-var overrides, default shown):
 #   OS_RELEASE_FILE        — /etc/os-release
-#   APT_SOURCES_DIR        — /etc/apt/sources.list.d
-#   YUM_REPOS_DIR          — /etc/yum.repos.d
 #   BEGET_CHEZMOI_INSTALLER — https://get.chezmoi.io
 #   BEGET_DIRENV_INSTALLER  — https://direnv.net/install.sh
 #   BEGET_RUSTUP_INSTALLER  — https://sh.rustup.rs
@@ -58,42 +60,11 @@ source_os_release() {
     export OS_MAJOR_VERSION="$major"
 }
 
-# Refresh the package manager's metadata cache. Cheap on an up-to-date
-# system and essential on one with stale / empty lists (e.g. a minimal
-# container with /var/lib/apt/lists/ pruned, or a long-idle VM). Called
-# automatically by pkg_install on first invocation per process.
-_pkg_cache_refreshed=0
-pkg_cache_refresh() {
-    if [[ "$_pkg_cache_refreshed" -eq 1 ]]; then
-        return 0
-    fi
-
-    if [[ -z "${OS_ID:-}" ]]; then
-        source_os_release
-    fi
-
-    case "$OS_ID" in
-        ubuntu | debian)
-            sudo apt-get update -qq
-            ;;
-        rocky | rhel | centos | almalinux | fedora)
-            # dnf makecache is a noop when metadata is fresh; honor its
-            # own age heuristics rather than forcing a full refresh.
-            sudo dnf makecache -q
-            ;;
-        *)
-            die "pkg_cache_refresh: unsupported OS_ID: $OS_ID"
-            ;;
-    esac
-
-    _pkg_cache_refreshed=1
-}
-
 # Resolve the distro-appropriate package name for the curses/TTY
 # pinentry. Debian/Ubuntu ship it as `pinentry-curses`; RHEL-family
 # dnf repos ship it as plain `pinentry` (no `-curses` suffix because
-# that's the only pinentry variant in the base repos). Callers emit
-# the returned name straight into pkg_install.
+# that's the only pinentry variant in the base repos). Consumed by
+# callers building distro-package lists for preflight scans.
 pkg_name_pinentry_tty() {
     if [[ -z "${OS_ID:-}" ]]; then
         source_os_release
@@ -102,77 +73,6 @@ pkg_name_pinentry_tty() {
         ubuntu | debian) printf 'pinentry-curses' ;;
         rocky | rhel | centos | almalinux | fedora) printf 'pinentry' ;;
         *) die "pkg_name_pinentry_tty: unsupported OS_ID: $OS_ID" ;;
-    esac
-}
-
-# Install one or more packages using the native package manager.
-# Dispatches based on OS_ID (populated by source_os_release).
-pkg_install() {
-    if [[ $# -eq 0 ]]; then
-        die "pkg_install: no packages specified"
-    fi
-
-    if [[ -z "${OS_ID:-}" ]]; then
-        source_os_release
-    fi
-
-    pkg_cache_refresh
-
-    case "$OS_ID" in
-        ubuntu | debian)
-            sudo apt-get install -y "$@"
-            ;;
-        rocky | rhel | centos | almalinux | fedora)
-            sudo dnf install -y "$@"
-            ;;
-        *)
-            die "pkg_install: unsupported OS_ID: $OS_ID"
-            ;;
-    esac
-}
-
-# Register an apt or yum repository.
-#   $1 — repo URL (apt: deb-line URL; yum: .repo file URL or base URL)
-#   $2 — keyring URL (apt: armored GPG; yum: RPM-GPG key URL)
-#   $3 — short name (used to derive the filename)
-pkg_repo_add() {
-    if [[ $# -lt 3 ]]; then
-        die "pkg_repo_add: usage: pkg_repo_add <url> <keyring_url> <name>"
-    fi
-
-    local url="$1"
-    local keyring_url="$2"
-    local name="$3"
-
-    if [[ -z "${OS_ID:-}" ]]; then
-        source_os_release
-    fi
-
-    local apt_dir="${APT_SOURCES_DIR:-/etc/apt/sources.list.d}"
-    local yum_dir="${YUM_REPOS_DIR:-/etc/yum.repos.d}"
-
-    case "$OS_ID" in
-        ubuntu | debian)
-            local keyring_path="/usr/share/keyrings/${name}.gpg"
-            local list_path="${apt_dir}/${name}.list"
-            # Fetch keyring separately: a sourced library can't set -o pipefail,
-            # so curl|gpg would silently swallow a curl failure and write an
-            # empty keyring. Fail fast instead.
-            local key_bytes
-            key_bytes=$(curl -fsSL "$keyring_url") ||
-                die "pkg_repo_add: failed to fetch keyring: $keyring_url"
-            printf '%s' "$key_bytes" | sudo gpg --dearmor -o "$keyring_path"
-            printf 'deb [signed-by=%s] %s\n' "$keyring_path" "$url" |
-                sudo tee "$list_path" >/dev/null
-            ;;
-        rocky | rhel | centos | almalinux | fedora)
-            local repo_path="${yum_dir}/${name}.repo"
-            sudo curl -fsSL -o "$repo_path" "$url"
-            sudo rpm --import "$keyring_url"
-            ;;
-        *)
-            die "pkg_repo_add: unsupported OS_ID: $OS_ID"
-            ;;
     esac
 }
 
@@ -198,38 +98,6 @@ _prepend_path() {
         *":${dir}:"*) return 0 ;;
     esac
     export PATH="${dir}:${PATH}"
-}
-
-# On RHEL-family systems, ensure the EPEL repository is enabled.
-# Several distro-layer prereqs (direnv most notably) live in EPEL rather
-# than base — a fresh Rocky/RHEL install has no `direnv` package until
-# EPEL is added. Noop on Debian-family. Honors DRY_RUN.
-pkg_ensure_epel() {
-    if [[ -z "${OS_ID:-}" ]]; then
-        source_os_release
-    fi
-
-    case "$OS_ID" in
-        rocky | rhel | centos | almalinux)
-            if rpm -q epel-release >/dev/null 2>&1; then
-                log_platform "epel-release already installed"
-            elif [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-                log_platform "[dry-run] would dnf install -y epel-release"
-                log_platform "[dry-run] would dnf config-manager --set-enabled crb"
-                return 0
-            else
-                log_platform "enabling EPEL repository via epel-release"
-                sudo dnf install -y epel-release
-            fi
-            # Most EPEL userspace packages (direnv among them) depend on
-            # CRB (CodeReady Builder; disabled by default on Rocky/RHEL).
-            log_platform "ensuring CRB repository is enabled"
-            sudo dnf config-manager --set-enabled crb
-            ;;
-        *)
-            return 0
-            ;;
-    esac
 }
 
 # Install chezmoi via the upstream installer (user-local, no sudo).
@@ -327,10 +195,11 @@ ensure_rust_toolchain() {
 }
 
 # Install rbw via cargo. Noop when rbw is already on PATH. Honors DRY_RUN.
-# Installs native build deps (pkg-config, openssl dev headers, C compiler)
-# via pkg_install, then ensures a modern Rust toolchain through rustup
-# (distro cargo on Ubuntu 24.04 / Rocky 9 is too old — see
-# ensure_rust_toolchain), and finally invokes `cargo install rbw --locked`.
+# The native build deps (pkg-config, openssl dev headers, C compiler) are
+# expected to be pre-installed by scripts/install-prereqs.sh and verified
+# by install.sh's preflight_root_requirements scan. A modern Rust toolchain
+# is ensured through rustup (distro cargo on Ubuntu 24.04 / Rocky 9 is too
+# old — see ensure_rust_toolchain), then we invoke `cargo install rbw --locked`.
 install_rbw() {
     local cargo_bindir="${HOME}/.cargo/bin"
 
@@ -339,32 +208,11 @@ install_rbw() {
         return 0
     fi
 
-    if [[ -z "${OS_ID:-}" ]]; then
-        source_os_release
-    fi
-
-    local -a build_deps
-    case "$OS_ID" in
-        ubuntu | debian)
-            build_deps=(pkg-config libssl-dev build-essential)
-            ;;
-        rocky | rhel | centos | almalinux | fedora)
-            build_deps=(pkg-config openssl-devel gcc)
-            ;;
-        *)
-            die "install_rbw: unsupported OS_ID: $OS_ID"
-            ;;
-    esac
-
     if [[ "${DRY_RUN:-0}" -eq 1 ]]; then
-        log_platform "[dry-run] would pkg_install rbw build deps: ${build_deps[*]}"
         log_platform "[dry-run] would ensure rust toolchain via rustup"
         log_platform "[dry-run] would cargo install rbw --locked into ${cargo_bindir}"
         return 0
     fi
-
-    log_platform "installing rbw build deps: ${build_deps[*]}"
-    pkg_install "${build_deps[@]}"
 
     ensure_rust_toolchain
 

@@ -13,16 +13,24 @@
 #   workstation → installs common + workstation
 #   (default)   → installs common only
 #
-# Idempotency: the underlying `pkg_install` delegates to `apt-get install -y`
-# or `dnf install -y`, both of which are no-ops when the package is already at
+# Idempotency: the default installer delegates to `apt-get install -y` or
+# `dnf install -y`, both of which are no-ops when the package is already at
 # the requested version.
+#
+# Root access: this hook needs root to install packages. Unlike install.sh
+# (which is strictly user-local post-#100), chezmoi apply is an interactive
+# step the user runs knowingly, so BEGET_SUDO=sudo is safe here. Tests
+# stub the installer wholesale via BEGET_PKG_INSTALL.
 #
 # Test seams (env-var overrides):
 #   BEGET_ROLE           — role selector (default: workstation)
 #   BEGET_PACKAGE_DIR    — directory containing apt-packages-*.list
 #                          (default: $HOME/.local/share/beget)
-#   BEGET_PKG_INSTALL    — function name to invoke (default: pkg_install)
+#   BEGET_PKG_INSTALL    — function name to invoke (default: beget_pkg_install)
 #                          override allows unit tests to capture invocations.
+#   BEGET_SUDO           — sudo (production); tests typically override
+#                          BEGET_PKG_INSTALL instead of mocking sudo.
+#   OS_RELEASE_FILE      — os-release file path (default /etc/os-release)
 #
 # chezmoi injects the following hashes so this script re-runs on any list edit:
 #   common:      {{ include "share/apt-packages-common.list" | sha256sum }}
@@ -32,16 +40,33 @@
 
 set -euo pipefail
 
-REPO_LIB_DIR="${BEGET_LIB_DIR:-${HOME}/.local/share/beget/lib}"
 PACKAGE_DIR="${BEGET_PACKAGE_DIR:-${HOME}/.local/share/beget}"
 ROLE="${BEGET_ROLE:-workstation}"
+BEGET_SUDO="${BEGET_SUDO:-sudo}"
 
-# Source lib/platform.sh for pkg_install. In production chezmoi lays this file
-# out under ~/.local/share/beget/lib/platform.sh; tests override BEGET_LIB_DIR.
-if [[ -r "${REPO_LIB_DIR}/platform.sh" ]]; then
-    # shellcheck source=/dev/null
-    source "${REPO_LIB_DIR}/platform.sh"
-fi
+# Default installer: dispatch to apt-get or dnf based on /etc/os-release.
+# This is self-contained (no dependency on lib/platform.sh) because #100
+# keeps platform.sh sudo-free. Tests override via BEGET_PKG_INSTALL.
+beget_pkg_install() {
+    local os_release_file="${OS_RELEASE_FILE:-/etc/os-release}"
+    local id=""
+    if [[ -r "$os_release_file" ]]; then
+        # shellcheck disable=SC1090
+        id=$(. "$os_release_file" && printf '%s' "${ID:-}")
+    fi
+    case "$id" in
+        ubuntu | debian)
+            $BEGET_SUDO apt-get install -y "$@"
+            ;;
+        rocky | rhel | centos | almalinux | fedora)
+            $BEGET_SUDO dnf install -y "$@"
+            ;;
+        *)
+            printf 'run_onchange_before_20-packages-common: unsupported OS %s, cannot install packages\n' "${id:-unknown}" >&2
+            return 1
+            ;;
+    esac
+}
 
 # Read a package list file and emit one package name per line, skipping blank
 # lines and `#` comment lines. Leading/trailing whitespace is stripped so that
@@ -76,7 +101,7 @@ install_from_list() {
         return 0
     fi
 
-    local installer="${BEGET_PKG_INSTALL:-pkg_install}"
+    local installer="${BEGET_PKG_INSTALL:-beget_pkg_install}"
     "$installer" "${pkgs[@]}"
 }
 

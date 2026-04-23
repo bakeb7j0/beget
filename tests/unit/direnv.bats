@@ -78,11 +78,15 @@ EOF
 
 # ---- install.sh prereq list -------------------------------------------------
 
-@test "install.sh UPSTREAM_PREREQS list contains direnv (R-01)" {
-    # direnv moved from DISTRO_PREREQS to UPSTREAM_PREREQS because
-    # Rocky 9 ships it in neither base nor EPEL repos, so the upstream
-    # direnv.net installer is the only uniform cross-distro path.
-    grep -qE '^readonly UPSTREAM_PREREQS=\(.*\bdirenv\b.*\)' "$INSTALL_SH"
+@test "install.sh installs direnv via upstream (R-01)" {
+    # direnv is NOT a distro package for beget: Rocky 9 ships it in
+    # neither base nor EPEL repos, so the upstream direnv.net installer
+    # is the only uniform cross-distro path. Since issue #100 there is
+    # no longer an UPSTREAM_PREREQS array (install.sh is purely user-local
+    # and doesn't touch apt/dnf at all); the uniform-installer contract
+    # is now expressed as a direct call to install_direnv from
+    # install_user_local. Verify that contract here.
+    grep -qE '^\s*install_direnv\b' "$INSTALL_SH"
 }
 
 # ---- .envrc example quality -------------------------------------------------
