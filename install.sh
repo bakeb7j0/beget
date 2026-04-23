@@ -217,11 +217,15 @@ expected_distro_pkgs() {
                 build-essential
             ;;
         rocky | rhel | centos | almalinux)
+            # pkgconf-pkg-config is the RPM that installs /usr/bin/pkg-config
+            # on RHEL-family. `dnf install pkg-config` also works (Provides
+            # metadata), but `rpm -q pkg-config` does NOT — our scan uses
+            # rpm -q via distro_pkg_installed, so we must name the real pkg.
             printf '%s\n' \
                 pinentry \
                 git \
                 curl \
-                pkg-config \
+                pkgconf-pkg-config \
                 openssl-devel \
                 gcc
             ;;

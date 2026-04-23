@@ -71,7 +71,9 @@ teardown() {
     # Then dnf install of the full Rocky pkg set.
     [[ "$output" == *"dnf"* ]]
     [[ "$output" == *"pinentry"* ]]
-    [[ "$output" == *"pkg-config"* ]]
+    # Rocky uses pkgconf-pkg-config (not the apt-native pkg-config name) —
+    # install.sh's rpm -q scan requires the real package name, not a Provides.
+    [[ "$output" == *"pkgconf-pkg-config"* ]]
     [[ "$output" == *"openssl-devel"* ]]
     [[ "$output" == *"gcc"* ]]
     # Ubuntu-only packages must not appear on Rocky.

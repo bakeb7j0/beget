@@ -18,12 +18,16 @@ run_test() {
     assert_eq "$OS_MAJOR_VERSION" "9" "os_major" || return 1
 
     # Post-#100 the distro pkg list for Rocky is computed by
-    # expected_distro_pkgs — pinentry (no -curses suffix), pkg-config,
-    # openssl-devel, gcc, etc. Ubuntu-only packages must not appear.
+    # expected_distro_pkgs — pinentry (no -curses suffix),
+    # pkgconf-pkg-config (the RPM that provides /usr/bin/pkg-config;
+    # `pkg-config` is only a Provides, not a real package name, and our
+    # rpm -q scan needs the real name), openssl-devel, gcc. Ubuntu-only
+    # packages must not appear.
     local pkgs
     pkgs="$(expected_distro_pkgs)" || return 1
     assert_match "$pkgs" "openssl-devel" "rocky list has openssl-devel" || return 1
     assert_match "$pkgs" "gcc" "rocky list has gcc" || return 1
+    assert_match "$pkgs" "pkgconf-pkg-config" "rocky list uses real RPM name for pkg-config" || return 1
     if [[ "$pkgs" == *libssl-dev* || "$pkgs" == *build-essential* ]]; then
         _assert_fail "rocky list leaked ubuntu-only pkgs: $pkgs"
         return 1

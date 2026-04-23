@@ -18,9 +18,11 @@
 # Packages installed (matches what install.sh + chezmoi templates need):
 #   Ubuntu 24.04: pinentry-curses git curl pkg-config libssl-dev
 #                 build-essential  (+ pinentry-gnome3 under GNOME)
-#   Rocky 9:      pinentry git curl pkg-config openssl-devel gcc
+#   Rocky 9:      pinentry git curl pkgconf-pkg-config openssl-devel gcc
 #                 (+ pinentry-gnome3 under GNOME), plus epel-release and
 #                 the CRB repo enabled (EPEL userspace depends on CRB).
+#                 (pkgconf-pkg-config is the RPM that provides pkg-config —
+#                 install.sh's preflight scans by rpm -q, not by Provides.)
 #
 # Exit codes:
 #   0 — success
@@ -122,7 +124,7 @@ install_ubuntu() {
 }
 
 install_rocky() {
-    local pkgs=(pinentry git curl pkg-config openssl-devel gcc)
+    local pkgs=(pinentry git curl pkgconf-pkg-config openssl-devel gcc)
     if is_gnome; then
         pkgs+=(pinentry-gnome3)
     fi
