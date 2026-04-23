@@ -132,12 +132,19 @@ main() {
 
     # Repo table: NAME|SOURCES_LINE|KEYRING_URL
     # SOURCES_LINE uses {{DIST}} for the Ubuntu codename. One entry per line.
+    #
+    # Spotify publishes their signing key under a fingerprint-addressed URL
+    # (pubkey_<fingerprint>.gpg) with no stable "latest" alias, so each key
+    # rotation (~2 yr cadence) requires a URL update here. The smoke canary
+    # catches rotations as apt NO_PUBKEY errors; the fix is to grab the
+    # current key fingerprint from the canary's InRelease error and point
+    # the URL below at pubkey_<that fingerprint>.gpg.
     local -a repos=(
         "mozilla|https://packages.mozilla.org/apt mozilla main|https://packages.mozilla.org/apt/repo-signing-key.gpg"
         "google-chrome|https://dl.google.com/linux/chrome/deb/ stable main|https://dl.google.com/linux/linux_signing_key.pub"
         "vivaldi|https://repo.vivaldi.com/stable/deb/ stable main|https://repo.vivaldi.com/stable/linux_signing_key.pub"
         "slack|https://packagecloud.io/slacktechnologies/slack/debian/ jessie main|https://packagecloud.io/slacktechnologies/slack/gpgkey"
-        "spotify|http://repository.spotify.com stable non-free|https://download.spotify.com/debian/pubkey_6224F9941A8AA6D1.gpg"
+        "spotify|http://repository.spotify.com stable non-free|https://download.spotify.com/debian/pubkey_5384CE82BA52C83A.gpg"
         "wezterm|https://apt.fury.io/wez/ * *|https://apt.fury.io/wez/gpg.key"
         "hashicorp|https://apt.releases.hashicorp.com {{DIST}} main|https://apt.releases.hashicorp.com/gpg"
         "vscode|https://packages.microsoft.com/repos/code stable main|https://packages.microsoft.com/keys/microsoft.asc"
