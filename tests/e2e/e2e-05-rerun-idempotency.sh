@@ -28,11 +28,17 @@ run_test() {
     assert_eq "$SKIP_SECRETS" "$skip1" "skip_secrets stable" || return 1
     assert_eq "$OS_ID" "$os1" "os_id stable" || return 1
 
-    # install_prereqs should be idempotent in dry-run too.
+    # Post-#100 the equivalent idempotency contract is on the two new
+    # function seams: preflight_root_requirements (read-only scan —
+    # identical rc and log every time) and install_user_local in
+    # dry-run (logs intent only, must be stable across re-runs).
+    preflight_root_requirements || return 1
+    preflight_root_requirements || return 1
+
     local out1 out2
-    out1="$(install_prereqs 2>&1)" || return 1
-    out2="$(install_prereqs 2>&1)" || return 1
-    assert_eq "$out1" "$out2" "install_prereqs output stable across re-runs" || return 1
+    out1="$(install_user_local 2>&1)" || return 1
+    out2="$(install_user_local 2>&1)" || return 1
+    assert_eq "$out1" "$out2" "install_user_local output stable across re-runs" || return 1
 }
 
 start=$(date +%s)

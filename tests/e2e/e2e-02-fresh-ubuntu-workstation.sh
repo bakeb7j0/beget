@@ -19,20 +19,32 @@ run_test() {
     preflight || return 1
     assert_eq "$OS_ID" "ubuntu" || return 1
 
-    # Workstation role should include pinentry-gnome3 if GNOME, else
-    # base list only. XDG_CURRENT_DESKTOP is unset in the container so
-    # is_gnome returns 1 and we should NOT see pinentry-gnome3.
+    # Post-#100 the distro pkg list is computed by expected_distro_pkgs
+    # (consumed by preflight_root_requirements). GNOME dispatch there
+    # adds pinentry-gnome3; non-GNOME does not. Test both branches at
+    # the function-seam level — the installer image is deliberately
+    # non-GNOME, so we invoke expected_distro_pkgs directly rather than
+    # relying on the container's XDG env.
     unset XDG_CURRENT_DESKTOP
-    local out
-    out="$(install_prereqs 2>&1)" || return 1
-    assert_match "$out" "chezmoi" "prereqs mention chezmoi" || return 1
+    local base_list
+    base_list="$(expected_distro_pkgs)" || return 1
+    assert_match "$base_list" "pinentry-curses" "ubuntu base includes pinentry-curses" || return 1
+    if [[ "$base_list" == *pinentry-gnome3* ]]; then
+        _assert_fail "non-GNOME list should NOT contain pinentry-gnome3: $base_list"
+        return 1
+    fi
 
     # Force GNOME branch to confirm pinentry-gnome3 gets added.
-    # shellcheck disable=SC2034
-    export XDG_CURRENT_DESKTOP="GNOME"
-    local out2
-    out2="$(install_prereqs 2>&1)" || return 1
-    assert_match "$out2" "pinentry-gnome3" "GNOME branch adds pinentry-gnome3" || return 1
+    local gnome_list
+    gnome_list="$(XDG_CURRENT_DESKTOP=GNOME expected_distro_pkgs)" || return 1
+    assert_match "$gnome_list" "pinentry-gnome3" "GNOME branch adds pinentry-gnome3" || return 1
+
+    # install_user_local in dry-run must still log chezmoi/direnv/rbw
+    # intent (the user-local half of the split). preflight_root_requirements
+    # itself is tested in E2E-15 and install.bats.
+    local out
+    out="$(install_user_local 2>&1)" || return 1
+    assert_match "$out" "chezmoi" "dry-run mentions chezmoi" || return 1
 }
 
 start=$(date +%s)

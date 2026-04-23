@@ -28,16 +28,22 @@ run_test() {
     assert_eq "$OS_ID" "ubuntu" "os_id" || return 1
     assert_eq "$OS_MAJOR_VERSION" "24" "os_major" || return 1
 
-    # install_prereqs in dry-run mode must emit both a distro pkg list
-    # and an upstream-installer marker but not actually invoke apt or
-    # cargo. The two-phase split is what fixes R-01 (chezmoi/rbw were
-    # never in the distro repos).
+    # Post-#100 the prereq model is split: distro packages come from
+    # scripts/install-prereqs.sh (baked into Dockerfile.ubuntu24 at build
+    # time), and install.sh's preflight_root_requirements is a read-only
+    # scan that exits 3 if anything is missing. On this image all
+    # packages are present, so the scan must return 0.
+    preflight_root_requirements || return 1
+
+    # install_user_local in dry-run mode must emit markers for all three
+    # upstream installers without actually invoking apt/cargo/curl. This
+    # is the "chezmoi/rbw were never in the distro repos" invariant that
+    # originally motivated R-01.
     local out
-    out="$(install_prereqs 2>&1)" || return 1
-    assert_match "$out" "would pkg_install" "distro dry-run marker" || return 1
-    assert_match "$out" "upstream prereqs" "upstream dry-run marker" || return 1
-    assert_match "$out" "chezmoi" "chezmoi mentioned" || return 1
-    assert_match "$out" "rbw" "rbw mentioned" || return 1
+    out="$(install_user_local 2>&1)" || return 1
+    assert_match "$out" "\[dry-run\] would install chezmoi" "chezmoi dry-run marker" || return 1
+    assert_match "$out" "\[dry-run\] would install direnv" "direnv dry-run marker" || return 1
+    assert_match "$out" "\[dry-run\] would cargo install rbw" "rbw dry-run marker" || return 1
 }
 
 start=$(date +%s)

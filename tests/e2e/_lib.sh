@@ -137,7 +137,7 @@ EOF
 # Invoke install.sh with preflight-only semantics: source it with
 # BEGET_INSTALL_SOURCED=1 so main() does not execute, then call
 # individual functions directly. Callers get access to parse_flags,
-# preflight, install_prereqs, etc.
+# preflight, preflight_root_requirements, install_user_local, etc.
 source_install() {
     local repo="${1:?repo path required}"
     export BEGET_INSTALL_SOURCED=1
@@ -149,7 +149,7 @@ source_install() {
     export BEGET_SKIP_TTY_REPARENT=1
     # install.sh defers sourcing lib/platform.sh until main(); since
     # we skip main(), bring platform.sh in directly so preflight /
-    # install_prereqs have source_os_release + friends available.
+    # install_user_local have source_os_release + friends available.
     # shellcheck source=/dev/null
     source "$repo/lib/platform.sh"
     # shellcheck source=/dev/null

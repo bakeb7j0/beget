@@ -15,11 +15,20 @@ RUN dnf install --allowerasing -yq \
         bash \
         ca-certificates \
         curl \
-        git \
         jq \
         python3 \
         sudo \
         tzdata
+
+# Install beget's distro-level prerequisites via the same script users run.
+# This bakes the root-owned packages (pinentry, EPEL+CRB, build deps for rbw,
+# etc.) into the image so `bash install.sh` at E2E time exits zero without
+# needing sudo — which is the whole point of issue #100. Doing it here also
+# acts as an image-build-time smoke test of install-prereqs.sh itself.
+COPY scripts/install-prereqs.sh /tmp/install-prereqs.sh
+RUN bash /tmp/install-prereqs.sh \
+    && rm -f /tmp/install-prereqs.sh \
+    && dnf clean all
 
 # Install chezmoi at a pinned version.
 RUN curl -fsSL get.chezmoi.io | sh -s -- -b /usr/local/bin -t v2.55.0

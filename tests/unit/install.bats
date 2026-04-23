@@ -13,6 +13,7 @@ setup() {
     [[ "$output" == *"--role="* ]]
     [[ "$output" == *"--skip-secrets"* ]]
     [[ "$output" == *"--skip-apply"* ]]
+    [[ "$output" == *"--skip-prereqs"* ]]
     [[ "$output" == *"--allow-root"* ]]
     [[ "$output" == *"--help"* ]]
 }
@@ -48,13 +49,14 @@ source_install() {
     source "$INSTALL_SH"
 }
 
-@test "install.sh: parse_flags sets DRY_RUN/ROLE/SKIP_SECRETS/SKIP_APPLY/ALLOW_ROOT" {
+@test "install.sh: parse_flags sets DRY_RUN/ROLE/SKIP_SECRETS/SKIP_APPLY/SKIP_PREREQS/ALLOW_ROOT" {
     source_install
-    parse_flags --dry-run --role=minimal --skip-secrets --skip-apply --allow-root
+    parse_flags --dry-run --role=minimal --skip-secrets --skip-apply --skip-prereqs --allow-root
     [ "$DRY_RUN" -eq 1 ]
     [ "$ROLE" = "minimal" ]
     [ "$SKIP_SECRETS" -eq 1 ]
     [ "$SKIP_APPLY" -eq 1 ]
+    [ "$SKIP_PREREQS" -eq 1 ]
     [ "$ALLOW_ROOT" -eq 1 ]
 }
 
@@ -87,52 +89,122 @@ source_install() {
     [ "$status" -eq 0 ]
 }
 
-@test "install.sh: install_prereqs dry-run emits distro and upstream markers" {
+# ---- Issue #100: user-local install + preflight root-requirements -----------
+
+@test "install.sh: preflight_root_requirements: missing pinentry on ubuntu dies with exit 3 + remediation" {
     source_install
-    parse_flags --dry-run --role=minimal --skip-secrets
-    # Source the library so install_prereqs can resolve install_chezmoi /
-    # install_rbw / is_gnome. The OS dispatch never executes because
-    # DRY_RUN=1, but OS_ID is still needed for install_rbw's guard.
     # shellcheck source=/dev/null
     source "$REPO_ROOT/lib/platform.sh"
     source "$REPO_ROOT/tests/helpers/mocks.sh"
     make_os_release "ubuntu" "24.04"
     source_os_release
+    parse_flags  # defaults: SKIP_PREREQS=0
 
-    run install_prereqs
-    [ "$status" -eq 0 ]
-    [[ "$output" == *"would pkg_install"* ]]
-    [[ "$output" == *"upstream prereqs"* ]]
-    [[ "$output" == *"chezmoi"* ]]
-    [[ "$output" == *"rbw"* ]]
+    # Simulate every distro pkg missing.
+    distro_pkg_installed() { return 1; }
+
+    run preflight_root_requirements
+    [ "$status" -eq 3 ]
+    [[ "$output" == *"missing root-installed prerequisites"* ]]
+    [[ "$output" == *"pinentry-curses"* ]]
+    [[ "$output" == *"install-prereqs.sh"* ]]
 }
 
-@test "install.sh: install_prereqs dry-run never invokes real curl or cargo" {
+@test "install.sh: preflight_root_requirements: all distro prereqs present continues (rc=0)" {
     source_install
-    parse_flags --dry-run --role=minimal --skip-secrets
     # shellcheck source=/dev/null
     source "$REPO_ROOT/lib/platform.sh"
     source "$REPO_ROOT/tests/helpers/mocks.sh"
     make_os_release "ubuntu" "24.04"
     source_os_release
+    parse_flags
 
-    # Stub curl/cargo/sh/pkg_install to fail loudly if the dry-run branch
-    # accidentally invokes them. command -v chezmoi / rbw will already
-    # return true in the sourced test environment, so we also wipe those
-    # via a restricted PATH to force the [dry-run] branch.
-    curl() { printf 'FAIL: curl called\n' >&2; return 99; }
-    cargo() { printf 'FAIL: cargo called\n' >&2; return 99; }
-    pkg_install() { printf 'FAIL: pkg_install called\n' >&2; return 99; }
-    export -f curl cargo pkg_install
+    distro_pkg_installed() { return 0; }
 
-    # Sandbox PATH so chezmoi / rbw are NOT found — forces the install
-    # branch inside install_chezmoi / install_rbw, which should still
-    # short-circuit on DRY_RUN=1.
-    PATH="/nonexistent" run install_prereqs
+    run preflight_root_requirements
     [ "$status" -eq 0 ]
-    [[ "$output" != *"FAIL: curl called"* ]]
-    [[ "$output" != *"FAIL: cargo called"* ]]
-    [[ "$output" != *"FAIL: pkg_install called"* ]]
+    [[ "$output" == *"distro prereqs OK"* ]]
+}
+
+@test "install.sh: preflight_root_requirements: --skip-prereqs bypasses scan entirely" {
+    source_install
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/lib/platform.sh"
+    source "$REPO_ROOT/tests/helpers/mocks.sh"
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+    parse_flags --skip-prereqs
+
+    # If the scan were to run it would invoke distro_pkg_installed; stub it
+    # to fail loudly so we catch any bypass regression.
+    distro_pkg_installed() { printf 'FAIL: scan ran despite --skip-prereqs\n' >&2; return 99; }
+
+    run preflight_root_requirements
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"skipping preflight_root_requirements"* ]]
+    [[ "$output" != *"FAIL"* ]]
+}
+
+@test "install.sh: preflight_root_requirements: rocky without epel lists epel-release + crb enable" {
+    source_install
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/lib/platform.sh"
+    source "$REPO_ROOT/tests/helpers/mocks.sh"
+    make_os_release "rocky" "9.3"
+    source_os_release
+    parse_flags
+
+    # All expected pkgs present except epel-release; CRB disabled.
+    distro_pkg_installed() { [[ "$1" != "epel-release" ]]; }
+    rocky_repo_enabled() { return 1; }
+
+    run preflight_root_requirements
+    [ "$status" -eq 3 ]
+    [[ "$output" == *"epel-release"* ]]
+    [[ "$output" == *"crb"* ]]
+    [[ "$output" == *"install-prereqs.sh"* ]]
+}
+
+@test "install.sh + lib/platform.sh: contain zero real sudo calls (regression guard)" {
+    # install.sh and lib/platform.sh must never invoke sudo themselves.
+    # The only legal occurrences are in comments and in remediation
+    # strings that tell the user to run install-prereqs.sh via sudo.
+    # Grep for a sudo command-invocation pattern: whitespace or start of
+    # line, followed by `sudo`, followed by whitespace + another word.
+    # Then filter out commented lines and printf-string instances.
+    local hits
+    hits="$(grep -nE '(^|[[:space:]])sudo[[:space:]]+[a-zA-Z]' "$REPO_ROOT/install.sh" "$REPO_ROOT/lib/platform.sh" |
+        grep -vE '^\s*#|printf .*sudo|^[^:]+:[[:digit:]]+:\s*#' || true)"
+    [[ -z "$hits" ]] || {
+        printf 'UNEXPECTED sudo calls:\n%s\n' "$hits"
+        false
+    }
+}
+
+@test "install.sh: install_user_local invokes all three upstream installers" {
+    source_install
+    # shellcheck source=/dev/null
+    source "$REPO_ROOT/lib/platform.sh"
+    source "$REPO_ROOT/tests/helpers/mocks.sh"
+    make_os_release "ubuntu" "24.04"
+    source_os_release
+    parse_flags --dry-run
+
+    # Replace the three installers with markers so we can assert
+    # they were each invoked exactly once.
+    local calls="$BATS_TEST_TMPDIR/installer-calls"
+    : >"$calls"
+    install_chezmoi() { echo chezmoi >>"$calls"; }
+    install_direnv() { echo direnv >>"$calls"; }
+    install_rbw() { echo rbw >>"$calls"; }
+    export -f install_chezmoi install_direnv install_rbw
+
+    run install_user_local
+    [ "$status" -eq 0 ]
+    run cat "$calls"
+    [[ "$output" == *"chezmoi"* ]]
+    [[ "$output" == *"direnv"* ]]
+    [[ "$output" == *"rbw"* ]]
 }
 
 # ---- Issue #98 regression tests ---------------------------------------------
